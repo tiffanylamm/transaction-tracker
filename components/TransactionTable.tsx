@@ -409,6 +409,11 @@ const TransactionTable = ({
                       onChange={setEditValue}
                       onBlur={commitEdit}
                       onCancel={() => { setEditingCell(null); setEditValue(""); }}
+                      onCommit={(val) => {
+                        onUpdate(tx.id, { category: val.trim() || null });
+                        setEditingCell(null);
+                        setEditValue("");
+                      }}
                       suggestions={allSuggestions}
                     />
                   ) : (

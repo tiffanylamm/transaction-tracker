@@ -8,6 +8,7 @@ interface CategoryAutocompleteProps {
   className?: string;
   onBlur?: () => void;
   onCancel?: () => void;
+  onCommit?: (val: string) => void;
 }
 
 const CategoryAutocomplete = ({
@@ -16,6 +17,7 @@ const CategoryAutocomplete = ({
   suggestions,
   onBlur,
   onCancel,
+  onCommit,
 }: CategoryAutocompleteProps) => {
   const filtered = value
     ? suggestions.filter((s) => s.toLowerCase().includes(value.toLowerCase()))
@@ -24,7 +26,14 @@ const CategoryAutocomplete = ({
   return (
     <Autocomplete.Root
       value={value}
-      onValueChange={(val) => onChange(val ?? "")}
+      onValueChange={(val, eventDetails) => {
+        const v = val ?? "";
+        if (eventDetails.reason === "item-press") {
+          onCommit?.(v);
+        } else {
+          onChange(v);
+        }
+      }}
       items={filtered}
       mode="both"
       openOnInputClick
@@ -35,9 +44,8 @@ const CategoryAutocomplete = ({
         onBlur={onBlur}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
-            onBlur?.();
-          }
-          if (e.key === "Escape") {
+            onCommit?.(value);
+          } else if (e.key === "Escape") {
             onCancel?.();
           }
         }}
