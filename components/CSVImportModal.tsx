@@ -13,7 +13,7 @@ interface CSVImportModalProps {
 
 interface CSVData {
   headers: string[];
-  previewRows: string[][];
+  // previewRows: string[][];
   allRows: string[][];
 }
 
@@ -145,10 +145,10 @@ const CSVImportModal = ({
       .slice(headerIdx + 1)
       .filter((l) => l.trim().length > 0)
       .map(parseLine);
-    const previewRows = allRows.slice(0, 5);
+    // const previewRows = allRows.slice(0, 5);
     return {
       headers,
-      previewRows,
+      // previewRows,
       allRows,
     };
   };
@@ -187,14 +187,13 @@ const CSVImportModal = ({
     const resolvedSource = source.trim() || null;
 
     if (detectedPreset) {
-      const newTransactions = csvData.allRows.map((row) => {
-        const mapped = detectedPreset.mapRow(row, csvData.headers);
-        return {
+      const newTransactions = csvData.allRows
+        .flatMap((row) => detectedPreset.mapRow(row, csvData.headers))
+        .map((mapped) => ({
           ...mapped,
           status: "Completed" as Status,
           source: resolvedSource,
-        };
-      });
+        }));
       onImport(newTransactions);
       onClose();
       return;
@@ -250,9 +249,8 @@ const CSVImportModal = ({
   // Pre-compute preview rows for detected preset
   const presetPreviewRows =
     detectedPreset && csvData
-      ? csvData.allRows.map((row) =>
-          detectedPreset.mapRow(row, csvData.headers),
-        )
+      ? csvData.allRows
+          .flatMap((row) => detectedPreset.mapRow(row, csvData.headers))
       : null;
 
   return (
@@ -318,48 +316,52 @@ const CSVImportModal = ({
             </div>
 
             {/* Preset preview table */}
-            <div className="overflow-x-auto border-t border-b border-gray-100 flex-1 min-h-50">
-              <div className="px-6 py-2 bg-gray-50/80 border-b border-gray-100 flex items-center">
+            <div className="border-t border-b border-gray-100 flex flex-col min-h-50">
+              <div className="shrink-0 px-6 py-2 bg-gray-50/80 border-b border-gray-100 flex items-center">
                 <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">
                   Preview · {presetPreviewRows.length} rows
                 </span>
               </div>
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr>
-                    {(["date", "description", "amount"] as const).map((col) => (
-                      <th
-                        key={col}
-                        className="py-3 px-4 font-normal text-[11px] uppercase tracking-wider border-b border-gray-200 text-gray-500 whitespace-nowrap"
-                      >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {presetPreviewRows.map((row, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-gray-50/50 transition-colors"
-                    >
-                      <td className="py-2.5 px-4 text-[13px] border-b border-gray-50 text-gray-900 whitespace-nowrap">
-                        {row.date}
-                      </td>
-                      <td className="py-2.5 px-4 text-[13px] border-b border-gray-50 text-gray-900 max-w-64 truncate">
-                        {row.description}
-                      </td>
-                      <td
-                        className={`py-2.5 px-4 text-[13px] border-b border-gray-50 whitespace-nowrap`}
-                      >
-                        {row.amount < 0
-                          ? `-$${Math.abs(row.amount).toFixed(2)}`
-                          : `+$${row.amount.toFixed(2)}`}
-                      </td>
+              <div className="overflow-auto flex-1">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 bg-white z-10">
+                    <tr>
+                      {(["date", "description", "amount"] as const).map(
+                        (col) => (
+                          <th
+                            key={col}
+                            className="py-3 px-4 font-normal text-[11px] uppercase tracking-wider border-b border-gray-200 text-gray-500 whitespace-nowrap"
+                          >
+                            {col}
+                          </th>
+                        ),
+                      )}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {presetPreviewRows.map((row, i) => (
+                      <tr
+                        key={i}
+                        className="hover:bg-gray-50/50 transition-colors"
+                      >
+                        <td className="py-2.5 px-4 text-[13px] border-b border-gray-50 text-gray-900 whitespace-nowrap">
+                          {row.date}
+                        </td>
+                        <td className="py-2.5 px-4 text-[13px] border-b border-gray-50 text-gray-900 max-w-64 truncate">
+                          {row.description}
+                        </td>
+                        <td
+                          className={`py-2.5 px-4 text-[13px] border-b border-gray-50 whitespace-nowrap`}
+                        >
+                          {row.amount < 0
+                            ? `-$${Math.abs(row.amount).toFixed(2)}`
+                            : `+$${row.amount.toFixed(2)}`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Footer */}
@@ -439,7 +441,7 @@ const CSVImportModal = ({
             <div className="overflow-x-auto border-t border-b border-gray-100 flex-1 min-h-50">
               <div className="px-6 py-2 bg-gray-50/80 border-b border-gray-100 flex items-center">
                 <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">
-                  Preview · {csvData.previewRows.length} rows
+                  Preview · {csvData.allRows.length} rows
                 </span>
               </div>
               <table className="w-full text-left border-collapse">
@@ -480,7 +482,7 @@ const CSVImportModal = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {csvData.previewRows.map((row, i) => (
+                  {csvData.allRows.map((row, i) => (
                     <tr
                       key={i}
                       className="hover:bg-gray-50/50 transition-colors"
