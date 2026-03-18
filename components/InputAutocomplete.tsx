@@ -1,7 +1,7 @@
 "use client";
 import { Autocomplete } from "@base-ui/react";
 
-interface CategoryAutocompleteProps {
+interface InputAutocompleteProps {
   value: string;
   onChange: (val: string) => void;
   suggestions: string[];
@@ -11,14 +11,14 @@ interface CategoryAutocompleteProps {
   onCommit?: (val: string) => void;
 }
 
-const CategoryAutocomplete = ({
+const InputAutocomplete = ({
   value,
   onChange,
   suggestions,
   onBlur,
   onCancel,
   onCommit,
-}: CategoryAutocompleteProps) => {
+}: InputAutocompleteProps) => {
   const filtered = value
     ? suggestions.filter((s) => s.toLowerCase().includes(value.toLowerCase()))
     : suggestions;
@@ -39,7 +39,7 @@ const CategoryAutocomplete = ({
       openOnInputClick
     >
       <Autocomplete.Input
-        className={`w-full bg-transparent border border-gray-200 focus:ring-1 focus:ring-gray-200 px-3 py-1 text-[13px] text-gray-900 placeholder-gray-400 transition-colors outline-none rounded-md`}
+        className={`w-full bg-transparent border border-gray-200 focus:ring-1 focus:ring-gray-200 px-3 py-1 text-[13px] text-gray-900 placeholder-gray-400 transition-colors outline-none rounded`}
         placeholder="Category..."
         onBlur={onBlur}
         onKeyDown={(e) => {
@@ -55,7 +55,7 @@ const CategoryAutocomplete = ({
       {filtered.length > 0 && (
         <Autocomplete.Portal>
           <Autocomplete.Positioner sideOffset={4} side="bottom" align="start">
-            <Autocomplete.Popup className="z-50 min-w-[8rem] rounded-md border border-gray-200 bg-white py-1 shadow-md outline-none">
+            <Autocomplete.Popup className="z-50 min-w-[8rem] rounded border border-gray-200 bg-white py-1 shadow-md outline-none">
               <Autocomplete.List>
                 {filtered.map((item) => (
                   <Autocomplete.Item
@@ -63,7 +63,7 @@ const CategoryAutocomplete = ({
                     value={item}
                     className="group cursor-pointer px-1 outline-none select-none"
                   >
-                    <div className="px-2 py-1.5 text-[13px] text-gray-700 rounded-md transition-colors group-data-[highlighted]:bg-gray-100">
+                    <div className="px-2 py-1.5 text-[13px] text-gray-700 rounded transition-colors group-data-[highlighted]:bg-gray-100">
                       {item}
                     </div>
                   </Autocomplete.Item>
@@ -77,4 +77,4 @@ const CategoryAutocomplete = ({
   );
 };
 
-export default CategoryAutocomplete;
+export default InputAutocomplete;

@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { ArrowDown, ArrowUp, Check, Trash, X } from "lucide-react";
 import { Transaction, SortConfig, Status } from "@/types/transaction";
 import StatusBadge from "./StatusBadge";
-import CategoryAutocomplete from "./CategoryAutocomplete";
+import InputAutocomplete from "./InputAutocomplete"; 
 interface TransactionTableProps {
   transactions: Transaction[];
   sortConfig: SortConfig | null;
@@ -258,7 +258,7 @@ const TransactionTable = ({
               </td>
               {/*New Category*/}
               <td className="py-2 px-3">
-                <CategoryAutocomplete
+                <InputAutocomplete
                   value={newTransaction.category ?? ""}
                   onChange={(val) =>
                     setNewTransaction({
@@ -404,7 +404,7 @@ const TransactionTable = ({
                   }
                 >
                   {isEditing(tx.id, "category") ? (
-                    <CategoryAutocomplete
+                    <InputAutocomplete
                       value={editValue}
                       onChange={setEditValue}
                       onBlur={commitEdit}
