@@ -22,7 +22,7 @@ const localToday = () => {
 
 const STATUSES: Status[] = ["Completed", "Owed", "Refunding"];
 
-type EditableFields = "date" | "description" | "category" | "amount" | "status";
+type EditableFields = "date" | "description" | "category" | "amount" | "status" | "source";
 
 const TransactionTable = ({
   transactions,
@@ -40,6 +40,7 @@ const TransactionTable = ({
     category: null,
     amount: 0,
     status: "Completed",
+    source: null,
   });
   const [editingCell, setEditingCell] = useState<{
     id: string;
@@ -50,6 +51,11 @@ const TransactionTable = ({
 
   const allSuggestions = useMemo(() => {
     const used = transactions.map((t) => t.category).filter(Boolean) as string[];
+    return Array.from(new Set(used));
+  }, [transactions]);
+
+  const allSourceSuggestions = useMemo(() => {
+    const used = transactions.map((t) => t.source).filter(Boolean) as string[];
     return Array.from(new Set(used));
   }, [transactions]);
 
@@ -94,6 +100,8 @@ const TransactionTable = ({
       }
     } else if (field === "category") {
       onUpdate(id, { category: editValue.trim() || null });
+    } else if (field === "source") {
+      onUpdate(id, { source: editValue.trim() || null });
     } else if (field === "status") {
       onUpdate(id, { status: editValue as Status });
     }
@@ -124,6 +132,7 @@ const TransactionTable = ({
       category: newTransaction.category,
       amount: newTransaction.amount,
       status: newTransaction.status as Status,
+      source: newTransaction.source ?? null,
     });
 
     setNewTransaction({
@@ -132,6 +141,7 @@ const TransactionTable = ({
       category: null,
       amount: 0,
       status: "Completed",
+      source: null,
     });
   };
 
@@ -218,6 +228,13 @@ const TransactionTable = ({
             >
               Status {renderSortIcon("status")}
             </th>
+            {/*Header Source*/}
+            <th
+              className={`${thClass} cursor-pointer hover:bg-gray-50 w-40`}
+              onClick={() => onSort("source")}
+            >
+              Source {renderSortIcon("source")}
+            </th>
             {/*Header Empty on Right*/}
             <th className={`${thClass} w-16`}></th>
           </tr>
@@ -267,6 +284,7 @@ const TransactionTable = ({
                     })
                   }
                   suggestions={allSuggestions}
+                  placeholder="Category..."
                 />
               </td>
               {/*New Description*/}
@@ -304,6 +322,20 @@ const TransactionTable = ({
                   ))}
                 </select>
               </td>
+              {/*New Source*/}
+              <td className="py-2 px-3">
+                <InputAutocomplete
+                  value={newTransaction.source ?? ""}
+                  onChange={(val) =>
+                    setNewTransaction({
+                      ...newTransaction,
+                      source: val.trim() || null,
+                    })
+                  }
+                  suggestions={allSourceSuggestions}
+                  placeholder="Source..."
+                />
+              </td>
               {/*New Extra At End*/}
               <td className="py-2 px-3 text-right">
                 <div className="flex items-center justify-end gap-2">
@@ -333,7 +365,7 @@ const TransactionTable = ({
           {transactions.length === 0 ? (
             <tr>
               <td
-                colSpan={6}
+                colSpan={7}
                 className="py-8 text-center text-[13px] text-gray-500"
               >
                 No transactions found.
@@ -476,6 +508,31 @@ const TransactionTable = ({
                     </select>
                   ) : (
                     <StatusBadge status={tx.status} />
+                  )}
+                </td>
+                {/*Source */}
+                <td
+                  className={`${tdClass} text-gray-500`}
+                  onClick={() =>
+                    !isEditing(tx.id, "source") &&
+                    startEditing(tx.id, "source", tx.source ?? "")
+                  }
+                >
+                  {isEditing(tx.id, "source") ? (
+                    <InputAutocomplete
+                      value={editValue}
+                      onChange={setEditValue}
+                      onBlur={commitEdit}
+                      onCancel={() => { setEditingCell(null); setEditValue(""); }}
+                      onCommit={(val) => {
+                        onUpdate(tx.id, { source: val.trim() || null });
+                        setEditingCell(null);
+                        setEditValue("");
+                      }}
+                      suggestions={allSourceSuggestions}
+                    />
+                  ) : (
+                    <span className="block py-px">{tx.source ?? ""}</span>
                   )}
                 </td>
                 {/*Controls */}
