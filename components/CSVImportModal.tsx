@@ -215,9 +215,20 @@ const CSVImportModal = ({ isOpen, onClose, onImport }: CSVImportModalProps) => {
       //clean date: format as YYYY-MM-DD
       let cleanDate = new Date().toISOString().split("T")[0];
       try {
-        const parsedDate = new Date(dateStr);
-        if (!isNaN(parsedDate.getTime())) {
-          cleanDate = parsedDate.toISOString().split("T")[0];
+        // Normalize MM/DD/YYYY and MM/DD/YY without using Date constructor
+        // (Date('YYYY-MM-DD') parses as UTC and shifts to previous day in US timezones)
+        const mmddyyyy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if (mmddyyyy) {
+          const [, m, d, y] = mmddyyyy;
+          const year = y.length === 2 ? `20${y}` : y;
+          cleanDate = `${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          cleanDate = dateStr;
+        } else {
+          const parsedDate = new Date(dateStr);
+          if (!isNaN(parsedDate.getTime())) {
+            cleanDate = parsedDate.toISOString().split("T")[0];
+          }
         }
       } catch (e) {
         //set as today if parsing fails
@@ -225,7 +236,7 @@ const CSVImportModal = ({ isOpen, onClose, onImport }: CSVImportModalProps) => {
       return {
         date: cleanDate,
         description: descriptionStr,
-        category: "Other" as Category,
+        category: "None" as Category,
         amount: isNaN(cleanAmount) ? 0 : cleanAmount,
         status: "Completed" as Status,
         isSelected: false

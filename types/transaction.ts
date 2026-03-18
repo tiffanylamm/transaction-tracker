@@ -13,7 +13,7 @@ export interface Transaction {
     id: string
     date: string //YYY-MM-DD
     description: string 
-    category: Category 
+    category: Category | null
     amount: number //pos = income, neg = expense 
     status: Status 
     createdAt: number //timestamp since never displayed 

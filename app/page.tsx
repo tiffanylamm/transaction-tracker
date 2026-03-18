@@ -58,7 +58,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     id: "6",
     date: "2026-01-22",
     description: "Electric Bill",
-    category: "None",
+    category: null,
     amount: -85.4,
     status: "Completed",
     createdAt: created + 5,
@@ -76,7 +76,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     id: "8",
     date: "2026-01-25",
     description: "AMC Theatres",
-    category: "None",
+    category: null,
     amount: -32.0,
     status: "Completed",
     createdAt: created + 7,
@@ -149,7 +149,7 @@ const Home = () => {
       result = result.filter(
         (tx) =>
           tx.description.toLowerCase().includes(query) ||
-          tx.category.toLowerCase().includes(query),
+          (tx.category && tx.category.toLowerCase().includes(query)),
       );
     }
     //Sort
@@ -165,7 +165,7 @@ const Home = () => {
       });
     } else {
       //default is sort by created at
-      result.sort((a, b) => a.createdAt - b.createdAt);
+      result.sort((a, b) => b.createdAt - a.createdAt);
     }
     return result;
   }, [transactions, searchQuery, sortConfig]);

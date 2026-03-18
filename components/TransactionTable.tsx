@@ -14,6 +14,11 @@ interface TransactionTableProps {
   onCancelAdd: () => void;
 }
 
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 const CATEGORIES: Category[] = [
   "Income",
   "Subscriptions",
@@ -37,9 +42,9 @@ const TransactionTable = ({
   onCancelAdd,
 }: TransactionTableProps) => {
   const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>({
-    date: new Date().toISOString().split("T")[0],
+    date: localToday(),
     description: "",
-    category: "None" as Category,
+    category: null,
     amount: 0,
     status: "Completed",
   });
@@ -89,7 +94,7 @@ const TransactionTable = ({
         onUpdate(id, { description: editValue.trim() });
       }
     } else if (field === "category") {
-      onUpdate(id, { category: editValue as Category });
+      onUpdate(id, { category: editValue === "None" ? null : editValue as Category });
     } else if (field === "status") {
       onUpdate(id, { status: editValue as Status });
     }
@@ -111,7 +116,7 @@ const TransactionTable = ({
       !newTransaction.date ||
       !newTransaction.description ||
       newTransaction.amount === undefined ||
-      !newTransaction.category
+      newTransaction.category === undefined
     )
       return;
     onAdd({
@@ -123,9 +128,9 @@ const TransactionTable = ({
     });
 
     setNewTransaction({
-      date: new Date().toISOString().split("T")[0],
+      date: localToday(),
       description: "",
-      category: "None" as Category,
+      category: null,
       amount: 0,
       status: "Completed",
     });
@@ -255,12 +260,12 @@ const TransactionTable = ({
               {/*New Category*/}
               <td className="py-2 px-3">
                 <select
-                  value={newTransaction.category}
+                  value={newTransaction.category ?? "None"}
                   className={addInputClass}
                   onChange={(e) =>
                     setNewTransaction({
                       ...newTransaction,
-                      category: e.target.value as Category,
+                      category: e.target.value === "None" ? null : e.target.value as Category,
                     })
                   }
                 >
@@ -402,7 +407,7 @@ const TransactionTable = ({
                   className={`${tdClass} text-gray-500`}
                   onClick={() =>
                     !isEditing(tx.id, "category") &&
-                    startEditing(tx.id, "category", tx.category)
+                    startEditing(tx.id, "category", tx.category ?? "None")
                   }
                 >
                   {isEditing(tx.id, "category") ? (
@@ -411,7 +416,7 @@ const TransactionTable = ({
                       value={editValue}
                       onChange={(e) => {
                         onUpdate(tx.id, {
-                          category: e.target.value as Category,
+                          category: e.target.value === "None" ? null : e.target.value as Category,
                         });
                         setEditingCell(null);
                       }}
@@ -425,7 +430,7 @@ const TransactionTable = ({
                       ))}
                     </select>
                   ) : (
-                    <span className="bock py-px">{tx.category}</span>
+                    <span className="bock py-px">{tx.category ?? ""}</span>
                   )}
                 </td>
                 {/*Amount */}
