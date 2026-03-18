@@ -21,26 +21,15 @@ const FIELDS = [
   {
     key: "date",
     label: "Date",
-    // bgColor: "bg-blue-50",
-    // ringColor: "ring-blue-500",
-    // borderColor: "border-blue-500",
-    // textColor: "text-blue-700",
   },
   {
     key: "description",
     label: "Description",
-    // bgColor: "bg-blue-50",
-    // ringColor: "ring-blue-500",
-    // borderColor: "border-blue-500",
-    // textColor: "text-blue-700",
   },
   {
     key: "amount",
     label: "Amount",
     bgColor: "bg-blue-50",
-    // ringColor: "ring-blue-500",
-    // borderColor: "border-blue-500",
-    // textColor: "text-blue-700",
   },
 ] as const;
 
@@ -52,7 +41,6 @@ const FIELD_STYLES: Record<
     ring: string;
     border: string;
     hover: string;
-    // pill: string;
   }
 > = {
   date: {
@@ -61,7 +49,6 @@ const FIELD_STYLES: Record<
     border: "border-blue-500",
     text: "text-blue-700",
     hover: "hover:bg-blue-50 hover:text-blue-700",
-    // pill: "bg-blue-200/80 text-blue-700",
   },
   description: {
     bg: "bg-purple-50",
@@ -69,7 +56,6 @@ const FIELD_STYLES: Record<
     border: "border-purple-500",
     text: "text-purple-700",
     hover: "hover:bg-purple-50 hover:text-purple-700",
-    // pill: "bg-blue-200/80 text-blue-700",
   },
   amount: {
     bg: "bg-pink-50",
@@ -77,12 +63,10 @@ const FIELD_STYLES: Record<
     border: "border-pink-500",
     text: "text-pink-700",
     hover: "hover:bg-pink-50 hover:text-pink-700",
-    // pill: "bg-blue-200/80 text-blue-700",
   },
 };
 
 type FieldKey = (typeof FIELDS)[number]["key"];
-//type FieldKey = "date" | "description" | "amount"; value of above
 const SIGNAL_WORDS = [
   "date",
   "amount",
@@ -96,12 +80,15 @@ const SIGNAL_WORDS = [
   "transaction",
 ];
 
-const CSVImportModal = ({ isOpen, onClose, onImport, sourceSuggestions }: CSVImportModalProps) => {
+const CSVImportModal = ({
+  isOpen,
+  onClose,
+  onImport,
+  sourceSuggestions,
+}: CSVImportModalProps) => {
   const [csvData, setCsvData] = useState<CSVData | null>(null);
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, string>>>({});
   const [pendingField, setPendingField] = useState<FieldKey | null>(null);
-  const [headerIdx, setHeaderIdx] = useState<number>(0);
-  const [detectedIdx, setDetectedIdx] = useState<number>(0);
   const [detectedPreset, setDetectedPreset] = useState<CSVPreset | null>(null);
   const [source, setSource] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -113,8 +100,6 @@ const CSVImportModal = ({ isOpen, onClose, onImport, sourceSuggestions }: CSVImp
         setCsvData(null);
         setMapping({});
         setPendingField(null);
-        setHeaderIdx(0);
-        setDetectedIdx(0);
         setDetectedPreset(null);
         setSource("");
         if (fileRef.current) fileRef.current.value = ""; //get rid of uploaded file
@@ -168,18 +153,6 @@ const CSVImportModal = ({ isOpen, onClose, onImport, sourceSuggestions }: CSVImp
     };
   };
 
-  //   const nudgeHeader = (text: string, delta: number) => {
-  //     const next = Math.max(
-  //       0,
-  //       Math.min(csvData?.allRows.length - 2, headerIdx + delta),
-  //     );
-  //     setHeaderIdx(next);
-  //     const parsed = parseCSV(text, headerIdx);
-  //     if (parsed) {
-  //       setCsvData(parsed);
-  //     }
-  //   };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log("file input changed");
     const file = e.target.files?.[0];
@@ -216,7 +189,11 @@ const CSVImportModal = ({ isOpen, onClose, onImport, sourceSuggestions }: CSVImp
     if (detectedPreset) {
       const newTransactions = csvData.allRows.map((row) => {
         const mapped = detectedPreset.mapRow(row, csvData.headers);
-        return { ...mapped, status: "Completed" as Status, source: resolvedSource };
+        return {
+          ...mapped,
+          status: "Completed" as Status,
+          source: resolvedSource,
+        };
       });
       onImport(newTransactions);
       onClose();
@@ -271,9 +248,12 @@ const CSVImportModal = ({ isOpen, onClose, onImport, sourceSuggestions }: CSVImp
   const allMapped = FIELDS.every((f) => mapping[f.key]);
 
   // Pre-compute preview rows for detected preset
-  const presetPreviewRows = detectedPreset && csvData
-    ? csvData.allRows.map((row) => detectedPreset.mapRow(row, csvData.headers))
-    : null;
+  const presetPreviewRows =
+    detectedPreset && csvData
+      ? csvData.allRows.map((row) =>
+          detectedPreset.mapRow(row, csvData.headers),
+        )
+      : null;
 
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center p-4 sm:p-6">
@@ -359,15 +339,22 @@ const CSVImportModal = ({ isOpen, onClose, onImport, sourceSuggestions }: CSVImp
                 </thead>
                 <tbody>
                   {presetPreviewRows.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                    <tr
+                      key={i}
+                      className="hover:bg-gray-50/50 transition-colors"
+                    >
                       <td className="py-2.5 px-4 text-[13px] border-b border-gray-50 text-gray-900 whitespace-nowrap">
                         {row.date}
                       </td>
                       <td className="py-2.5 px-4 text-[13px] border-b border-gray-50 text-gray-900 max-w-64 truncate">
                         {row.description}
                       </td>
-                      <td className={`py-2.5 px-4 text-[13px] border-b border-gray-50 whitespace-nowrap`}>
-                        {row.amount < 0 ? `-$${Math.abs(row.amount).toFixed(2)}` : `+$${row.amount.toFixed(2)}`}
+                      <td
+                        className={`py-2.5 px-4 text-[13px] border-b border-gray-50 whitespace-nowrap`}
+                      >
+                        {row.amount < 0
+                          ? `-$${Math.abs(row.amount).toFixed(2)}`
+                          : `+$${row.amount.toFixed(2)}`}
                       </td>
                     </tr>
                   ))}
