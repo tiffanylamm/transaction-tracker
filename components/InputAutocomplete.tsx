@@ -57,7 +57,7 @@ const InputAutocomplete = ({
       {filtered.length > 0 && (
         <Autocomplete.Portal>
           <Autocomplete.Positioner sideOffset={4} side="bottom" align="start">
-            <Autocomplete.Popup className="z-50 min-w-[8rem] rounded border border-gray-200 bg-white py-1 shadow-md outline-none">
+            <Autocomplete.Popup className="z-200 min-w-32 rounded border border-gray-200 bg-white py-1 shadow-md outline-none">
               <Autocomplete.List>
                 {filtered.map((item) => (
                   <Autocomplete.Item
@@ -65,7 +65,7 @@ const InputAutocomplete = ({
                     value={item}
                     className="group cursor-pointer px-1 outline-none select-none"
                   >
-                    <div className="px-2 py-1.5 text-[13px] text-gray-700 rounded transition-colors group-data-[highlighted]:bg-gray-100">
+                    <div className="px-2 py-1.5 text-[13px] text-gray-700 rounded transition-colors group-data-highlighted:bg-gray-100">
                       {item}
                     </div>
                   </Autocomplete.Item>

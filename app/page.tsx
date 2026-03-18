@@ -246,6 +246,7 @@ const Home = () => {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           onImport={handleImportTransactions}
+          sourceSuggestions={[...new Set(transactions.map((t) => t.source).filter((s): s is string => s !== null))]}
         />
       </div>
     </main>
