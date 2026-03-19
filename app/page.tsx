@@ -186,7 +186,8 @@ const Home = () => {
       result = result.filter(
         (tx) =>
           tx.description.toLowerCase().includes(query) ||
-          (tx.category && tx.category.toLowerCase().includes(query)),
+          (tx.category && tx.category.toLowerCase().includes(query)) ||
+          (tx.amount && tx.amount.toString().includes(query)),
       );
     }
     //Sort
@@ -226,8 +227,7 @@ const Home = () => {
 
   const clearSelected = () => setSelectedIds(new Set());
 
-  const handleCreateGroup = () => {
-    if (selectedUngroupedIds.length < 2) return;
+  const handleCreateGroup = (name: string) => {
     const children = selectedUngroupedIds.map(
       (id) => transactions.find((tx) => tx.id === id)!,
     );
@@ -242,7 +242,7 @@ const Home = () => {
       ),
       {
         id: groupId,
-        description: "New Group",
+        description: name,
         category: null,
         ...groupInfo,
         createdAt: Date.now(),
@@ -317,7 +317,7 @@ const Home = () => {
           </div>
         </header>
         {/* Main Table */}
-        <div className="mt-4">
+        <div className="mt-4 overflow-y-auto max-h-[calc(100vh-10rem)]">
           <TransactionTable
             transactions={processedTransactions}
             allTransactions={transactions}

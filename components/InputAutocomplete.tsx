@@ -7,6 +7,8 @@ interface InputAutocompleteProps {
   suggestions: string[];
   className?: string;
   placeholder?: string;
+  autoFocus?: boolean;
+  positionerZIndex?: number;
   onBlur?: () => void;
   onCancel?: () => void;
   onCommit?: (val: string) => void;
@@ -17,6 +19,8 @@ const InputAutocomplete = ({
   onChange,
   suggestions,
   placeholder,
+  autoFocus = true,
+  positionerZIndex = 9999,
   onBlur,
   onCancel,
   onCommit,
@@ -51,13 +55,19 @@ const InputAutocomplete = ({
             onCancel?.();
           }
         }}
-        autoFocus
-        onFocus={(e) => e.target.select()}
+        autoFocus={autoFocus}
+        onFocus={(e) => { if (autoFocus) e.target.select(); }}
       />
       {filtered.length > 0 && (
         <Autocomplete.Portal>
-          <Autocomplete.Positioner sideOffset={4} side="bottom" align="start">
-            <Autocomplete.Popup className="z-200 min-w-32 rounded border border-gray-200 bg-white py-1 shadow-md outline-none">
+          <Autocomplete.Positioner
+            sideOffset={4}
+            side="bottom"
+            align="start"
+            style={{ zIndex: positionerZIndex }}
+            className="data-anchor-hidden:invisible"
+          >
+            <Autocomplete.Popup className="min-w-32 rounded border border-gray-200 bg-white py-1 shadow-md outline-none">
               <Autocomplete.List>
                 {filtered.map((item) => (
                   <Autocomplete.Item
