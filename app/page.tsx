@@ -1,16 +1,11 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { SortConfig, Transaction, Status } from "@/types/transaction";
+import { SortConfig, Transaction } from "@/types/transaction";
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
 import { Search, Plus, Upload } from "lucide-react";
-
-const STATUS_PRIORITY: Record<Status, number> = {
-  Owed: 3,
-  Refunding: 2,
-  Completed: 1,
-};
+import { computeGroupFields } from "@/lib/groupUtils";
 
 //sample data
 const created = Date.now();
@@ -173,10 +168,13 @@ const Home = () => {
   };
 
   const handleDeleteTransaction = (id: string) => {
-    //delete transaction + any children 
-    setTransactions((prev) =>
-      prev.filter((tx) => tx.id !== id || tx.parentId !== id),
-    );
+    const tx = transactions.find((t) => t.id === id);
+    if (tx?.isGroup) {
+      setTransactions((prev) => prev.filter((t) => t.id !== id && t.parentId !== id));
+      setExpandedIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    } else {
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    }
   };
 
   //filter + sort transactions
@@ -219,25 +217,6 @@ const Home = () => {
       createdAt: now + i,
     }));
     setTransactions((prev) => [...prev, ...transactionsComplete]);
-  };
-
-  const computeGroupFields = (
-    children: Transaction[],
-  ): Pick<Transaction, "date" | "amount" | "status" | "source"> => {
-    const date = children.reduce(
-      (earliest, c) => (c.date < earliest ? c.date : earliest),
-      children[0].date,
-    );
-    const amount = children.reduce((sum, c) => c.amount + sum, 0);
-    const status = children.reduce(
-      (top, c) =>
-        STATUS_PRIORITY[c.status] > STATUS_PRIORITY[top] ? c.status : top,
-      children[0].status,
-    );
-    const sources = [...new Set(children.map((c) => c.source).filter(Boolean))];
-    const source =
-      sources.length === 0 ? null : sources.length === 1 ? sources[0] : "Mixed";
-    return { date, amount, status, source };
   };
 
   const selectedUngroupedIds = [...selectedIds].filter((id) => {
@@ -341,6 +320,7 @@ const Home = () => {
         <div className="mt-4">
           <TransactionTable
             transactions={processedTransactions}
+            allTransactions={transactions}
             sortConfig={sortConfig}
             onSort={handleSort}
             onDelete={handleDeleteTransaction}
@@ -348,6 +328,26 @@ const Home = () => {
             showAddRow={showAddRow}
             onAdd={handleAddTransaction}
             onCancelAdd={() => setShowAddRow(false)}
+            expandedIds={expandedIds}
+            onToggleExpand={(id) =>
+              setExpandedIds((prev) => {
+                const s = new Set(prev);
+                s.has(id) ? s.delete(id) : s.add(id);
+                return s;
+              })
+            }
+            selectedIds={selectedIds}
+            onToggleSelect={(id) =>
+              setSelectedIds((prev) => {
+                const s = new Set(prev);
+                s.has(id) ? s.delete(id) : s.add(id);
+                return s;
+              })
+            }
+            onClearSelection={clearSelected}
+            onCreateGroup={handleCreateGroup}
+            onAddToGroup={handleAddToGroup}
+            onUnlinkChild={handleUnlinkChild}
           />
         </div>
         {/*CSVImportModal */}
