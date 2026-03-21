@@ -1,134 +1,156 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { SortConfig, Transaction } from "@/types/transaction";
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
 import { Search, Plus, Upload } from "lucide-react";
 import { computeGroupFields } from "@/lib/groupUtils";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import SettingsDrawer from "@/components/SettingsDrawer";
 
 //sample data
-const created = Date.now();
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: "1",
-    date: "2026-01-15",
-    description: "TechCorp Salary",
-    category: "Income",
-    amount: 4250.0,
-    status: "Refunding",
-    source: "BofA Checking",
-    createdAt: created,
-    isGroup: false,
-    parentId: null,
-  },
-  {
-    id: "2",
-    date: "2026-01-16",
-    description: "Whole Foods Market",
-    category: "Shopping",
-    amount: -145.2,
-    status: "Completed",
-    source: "BofA Credit Card",
-    createdAt: created + 1,
-    isGroup: true,
-    parentId: null,
-  },
-  {
-    id: "3",
-    date: "2026-01-18",
-    description: "Downtown Apartment",
-    category: "Subscriptions",
-    amount: -1850.0,
-    status: "Completed",
-    source: "BofA Checking",
-    createdAt: created + 2,
-    isGroup: false,
-    parentId: "2",
-  },
-  {
-    id: "4",
-    date: "2026-01-19",
-    description: "Blue Bottle Coffee",
-    category: "Shopping",
-    amount: -6.5,
-    status: "Completed",
-    source: "BofA Debit Card",
-    createdAt: created + 3,
-    isGroup: false,
-    parentId: "2",
-  },
-  {
-    id: "5",
-    date: "2026-01-20",
-    description: "Netflix Subscription",
-    category: "Entertainment",
-    amount: -15.99,
-    status: "Completed",
-    source: "BofA Credit Card",
-    createdAt: created + 4,
-    isGroup: false,
-    parentId: null,
-  },
-  {
-    id: "6",
-    date: "2026-01-22",
-    description: "Electric Bill",
-    category: null,
-    amount: -85.4,
-    status: "Completed",
-    source: null,
-    createdAt: created + 5,
-    isGroup: false,
-    parentId: null,
-  },
-  {
-    id: "7",
-    date: "2026-01-24",
-    description: "Freelance Design Work",
-    category: "Subscriptions",
-    amount: 850.0,
-    status: "Completed",
-    source: "BofA Checking",
-    createdAt: created + 6,
-    isGroup: false,
-    parentId: null,
-  },
-  {
-    id: "8",
-    date: "2026-01-25",
-    description: "AMC Theatres",
-    category: null,
-    amount: -32.0,
-    status: "Completed",
-    source: "BofA Credit Card",
-    createdAt: created + 7,
-    isGroup: false,
-    parentId: null,
-  },
-  {
-    id: "9",
-    date: "2026-01-28",
-    description: "Internet Service",
-    category: "Entertainment",
-    amount: -65.0,
-    status: "Owed",
-    source: null,
-    createdAt: created + 8,
-    isGroup: false,
-    parentId: null,
-  },
-];
+// const created = Date.now();
+// const INITIAL_TRANSACTIONS: Transaction[] = [
+//   {
+//     id: "1",
+//     date: "2026-01-15",
+//     description: "TechCorp Salary",
+//     category: "Income",
+//     amount: 4250.0,
+//     status: "Refunding",
+//     source: "BofA Checking",
+//     createdAt: created,
+//     isGroup: false,
+//     parentId: null,
+//   },
+//   {
+//     id: "2",
+//     date: "2026-01-16",
+//     description: "Whole Foods Market",
+//     category: "Shopping",
+//     amount: -145.2,
+//     status: "Completed",
+//     source: "BofA Credit Card",
+//     createdAt: created + 1,
+//     isGroup: true,
+//     parentId: null,
+//   },
+//   {
+//     id: "3",
+//     date: "2026-01-18",
+//     description: "Downtown Apartment",
+//     category: "Subscriptions",
+//     amount: -1850.0,
+//     status: "Completed",
+//     source: "BofA Checking",
+//     createdAt: created + 2,
+//     isGroup: false,
+//     parentId: "2",
+//   },
+//   {
+//     id: "4",
+//     date: "2026-01-19",
+//     description: "Blue Bottle Coffee",
+//     category: "Shopping",
+//     amount: -6.5,
+//     status: "Completed",
+//     source: "BofA Debit Card",
+//     createdAt: created + 3,
+//     isGroup: false,
+//     parentId: "2",
+//   },
+//   {
+//     id: "5",
+//     date: "2026-01-20",
+//     description: "Netflix Subscription",
+//     category: "Entertainment",
+//     amount: -15.99,
+//     status: "Completed",
+//     source: "BofA Credit Card",
+//     createdAt: created + 4,
+//     isGroup: false,
+//     parentId: null,
+//   },
+//   {
+//     id: "6",
+//     date: "2026-01-22",
+//     description: "Electric Bill",
+//     category: null,
+//     amount: -85.4,
+//     status: "Completed",
+//     source: null,
+//     createdAt: created + 5,
+//     isGroup: false,
+//     parentId: null,
+//   },
+//   {
+//     id: "7",
+//     date: "2026-01-24",
+//     description: "Freelance Design Work",
+//     category: "Subscriptions",
+//     amount: 850.0,
+//     status: "Completed",
+//     source: "BofA Checking",
+//     createdAt: created + 6,
+//     isGroup: false,
+//     parentId: null,
+//   },
+//   {
+//     id: "8",
+//     date: "2026-01-25",
+//     description: "AMC Theatres",
+//     category: null,
+//     amount: -32.0,
+//     status: "Completed",
+//     source: "BofA Credit Card",
+//     createdAt: created + 7,
+//     isGroup: false,
+//     parentId: null,
+//   },
+//   {
+//     id: "9",
+//     date: "2026-01-28",
+//     description: "Internet Service",
+//     category: "Entertainment",
+//     amount: -65.0,
+//     status: "Owed",
+//     source: null,
+//     createdAt: created + 8,
+//     isGroup: false,
+//     parentId: null,
+//   },
+// ];
 
 const Home = () => {
-  const [transactions, setTransactions] =
-    useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddRow, setShowAddRow] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([]));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([]));
+
+  const { data: session, isPending } = authClient.useSession();
+  const router = useRouter();
+  const prevUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.push("/sign-in");
+    }
+  }, [session, isPending, router]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    if (prevUserIdRef.current === session.user.id) return;
+    prevUserIdRef.current = session.user.id;
+
+    fetch("/api/transactions")
+      .then((r) => r.json())
+      .then((data) => setTransactions(data));
+  }, [session?.user?.id]);
 
   const handleSort = (key: keyof Transaction) => {
     setSortConfig((current) => {
@@ -155,6 +177,13 @@ const Home = () => {
       createdAt: now,
     };
     setTransactions((prev) => [...prev, transaction]);
+
+    fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(transaction),
+    });
+
     setShowAddRow(false);
   };
 
@@ -165,13 +194,29 @@ const Home = () => {
     setTransactions((prev) =>
       prev.map((tx) => (tx.id === id ? { ...tx, ...updates } : tx)),
     );
+
+    fetch(`/api/transactions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
   };
 
   const handleDeleteTransaction = (id: string) => {
+    fetch(`api/transactions/${id}`, {
+      method: "DELETE",
+    });
+
     const tx = transactions.find((t) => t.id === id);
     if (tx?.isGroup) {
-      setTransactions((prev) => prev.filter((t) => t.id !== id && t.parentId !== id));
-      setExpandedIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      setTransactions((prev) =>
+        prev.filter((t) => t.id !== id && t.parentId !== id),
+      );
+      setExpandedIds((prev) => {
+        const s = new Set(prev);
+        s.delete(id);
+        return s;
+      });
     } else {
       setTransactions((prev) => prev.filter((t) => t.id !== id));
     }
@@ -217,6 +262,15 @@ const Home = () => {
       id: crypto.randomUUID(),
       createdAt: now + i,
     }));
+
+    transactionsComplete.forEach((tx) => {
+      fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tx),
+      });
+    });
+
     setTransactions((prev) => [...prev, ...transactionsComplete]);
   };
 
@@ -251,9 +305,31 @@ const Home = () => {
       },
     ]);
 
-    setExpandedIds((prev) => new Set([...prev, groupId]));
+    // setExpandedIds((prev) => new Set([...prev, groupId]));
 
     clearSelected();
+
+    fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: groupId,
+        description: name,
+        category: null,
+        ...groupInfo,
+        createdAt: Date.now(),
+        isGroup: true,
+        parentId: null,
+      }),
+    });
+
+    selectedUngroupedIds.forEach((id) => {
+      fetch(`/api/transactions/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId: groupId }),
+      });
+    });
   };
 
   const handleAddToGroup = (groupId: string) => {
@@ -268,6 +344,14 @@ const Home = () => {
     ]);
 
     clearSelected();
+
+    selectedUngroupedIds.forEach((id) => {
+      fetch(`/api/transactions/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId: groupId }),
+      });
+    });
   };
 
   const handleUnlinkChild = (childId: string) => {
@@ -276,8 +360,15 @@ const Home = () => {
     setTransactions((prev) => [
       ...prev.map((tx) => (tx.id === childId ? { ...tx, parentId: null } : tx)),
     ]);
-    //no auto-dissolving can have 1 child under parent
+
+    fetch(`/api/transactions/${childId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentId: null }),
+    });
   };
+
+  if (isPending || !session) return null; //blank page if loading for now
 
   return (
     <main className="min-h-screen bg-white text-gray-900 font-sans">
@@ -314,6 +405,8 @@ const Home = () => {
               <Plus className="w-4 h-4" />
               New
             </button>
+
+            <SettingsDrawer />
           </div>
         </header>
         {/* Main Table */}

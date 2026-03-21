@@ -246,9 +246,8 @@ const TransactionTable = ({
 
   return (
     <div className="w-full">
-      {/* Toolbar — visible when rows are selected */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
+      {/* Toolbar — always reserves space to prevent table shift */}
+      <div className={`flex items-center gap-2 mb-3 flex-wrap h-8 ${selectedIds.size === 0 ? "invisible" : ""}`}>
           <span className="text-[12px] text-gray-400">
             {selectedUngroupedIds.length} selected
           </span>
@@ -287,13 +286,12 @@ const TransactionTable = ({
           >
             <X className="w-4 h-4" />
           </button>
-        </div>
-      )}
+      </div>
 
       <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-12rem)]">
         <table className="w-full text-left border-collapse">
           {/* Header */}
-          <thead className="sticky top-0 bg-white z-20">
+          <thead className="sticky top-0 bg-white z-2">
             <tr>
               <th className={`${thClass} w-8`} />
               <th
@@ -502,12 +500,14 @@ const TransactionTable = ({
                             )}
                           </button>
                         ) : (
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => onToggleSelect(tx.id)}
-                            className="block w-3.5 h-3.5 accent-gray-700 cursor-pointer"
-                          />
+                          <label className="flex items-center justify-center w-full h-full min-h-8 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => onToggleSelect(tx.id)}
+                              className="w-3.5 h-3.5 accent-gray-700 cursor-pointer"
+                            />
+                          </label>
                         )}
                       </td>
 
