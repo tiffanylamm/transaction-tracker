@@ -11,9 +11,10 @@ import {
   Unlink,
   X,
 } from "lucide-react";
-import { Transaction, SortConfig, Status } from "@/types/transaction";
+import { Transaction, SortConfig, Status, STATUSES } from "@/types/transaction";
 import StatusBadge from "./StatusBadge";
 import InputAutocomplete from "./InputAutocomplete";
+import BulkActions from "./BulkActions";
 import { computeGroupFields } from "@/lib/groupUtils";
 
 interface TransactionTableProps {
@@ -30,10 +31,13 @@ interface TransactionTableProps {
   onToggleExpand: (id: string) => void;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
+  onSelectAll: (ids: string[]) => void;
   onClearSelection: () => void;
   onCreateGroup: (name: string) => void;
   onAddToGroup: (groupId: string) => void;
   onUnlinkChild: (childId: string) => void;
+  onBulkDelete: (ids: string[]) => void;
+  onBulkUpdate: (ids: string[], updates: Partial<Transaction>) => void;
 }
 
 const localToday = () => {
@@ -41,7 +45,6 @@ const localToday = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const STATUSES: Status[] = ["Completed", "Owed", "Refunding"];
 
 const LOCKED_GROUP_FIELDS = new Set(["date", "amount", "status", "source"]);
 
@@ -67,10 +70,13 @@ const TransactionTable = ({
   onToggleExpand,
   selectedIds,
   onToggleSelect,
+  onSelectAll,
   onClearSelection,
   onCreateGroup,
   onAddToGroup,
   onUnlinkChild,
+  onBulkDelete,
+  onBulkUpdate,
 }: TransactionTableProps) => {
   const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>({
     date: localToday(),
@@ -103,6 +109,14 @@ const TransactionTable = ({
       .filter(Boolean) as string[];
     return Array.from(new Set(used));
   }, [allTransactions]);
+
+  const selectableIds = useMemo(
+    () => transactions.filter((tx) => !tx.isGroup).map((tx) => tx.id),
+    [transactions],
+  );
+
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const someSelected = selectableIds.some((id) => selectedIds.has(id));
 
   const selectedUngroupedIds = useMemo(
     () =>
@@ -252,29 +266,38 @@ const TransactionTable = ({
             {selectedUngroupedIds.length} selected
           </span>
           {selectedUngroupedIds.length >= 1 && (
-            <div className="flex items-center gap-1">
-              <InputAutocomplete
-                value={groupInput}
-                onChange={setGroupInput}
-                suggestions={existingGroups.map((g) => g.description)}
-                placeholder="Group as…"
-                autoFocus={false}
-                onCancel={() => setGroupInput("")}
-                onCommit={(val) => {
-                  const trimmed = val.trim();
-                  if (!trimmed) return;
-                  const existing = existingGroups.find(
-                    (g) => g.description === trimmed,
-                  );
-                  if (existing) {
-                    onAddToGroup(existing.id);
-                  } else {
-                    onCreateGroup(trimmed);
-                  }
-                  setGroupInput("");
-                }}
+            <>
+              <div className="flex items-center gap-1">
+                <InputAutocomplete
+                  value={groupInput}
+                  onChange={setGroupInput}
+                  suggestions={existingGroups.map((g) => g.description)}
+                  placeholder="Group as…"
+                  autoFocus={false}
+                  onCancel={() => setGroupInput("")}
+                  onCommit={(val) => {
+                    const trimmed = val.trim();
+                    if (!trimmed) return;
+                    const existing = existingGroups.find(
+                      (g) => g.description === trimmed,
+                    );
+                    if (existing) {
+                      onAddToGroup(existing.id);
+                    } else {
+                      onCreateGroup(trimmed);
+                    }
+                    setGroupInput("");
+                  }}
+                />
+              </div>
+              <BulkActions
+                selectedIds={selectedIds}
+                allTransactions={allTransactions}
+                onBulkDelete={onBulkDelete}
+                onBulkUpdate={onBulkUpdate}
+                onClearSelection={onClearSelection}
               />
-            </div>
+            </>
           )}
           <button
             onClick={() => {
@@ -293,7 +316,25 @@ const TransactionTable = ({
           {/* Header */}
           <thead className="sticky top-0 bg-white z-2">
             <tr>
-              <th className={`${thClass} w-8`} />
+              <th className={`${thClass} w-8`}>
+                {selectableIds.length > 0 && (
+                  <label className="flex items-center justify-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                      onChange={() => {
+                        if (allSelected) {
+                          onClearSelection();
+                        } else {
+                          onSelectAll(selectableIds);
+                        }
+                      }}
+                      className="w-3.5 h-3.5 accent-gray-700 cursor-pointer"
+                    />
+                  </label>
+                )}
+              </th>
               <th
                 className={`${thClass} cursor-pointer hover:bg-gray-50 w-32`}
                 onClick={() => onSort("date")}

@@ -294,6 +294,45 @@ const Home = () => {
     );
   };
 
+  const handleBulkDelete = (ids: string[]) => {
+    Promise.all(
+      ids.map((id) =>
+        fetch(`/api/transactions/${id}`, { method: "DELETE" }),
+      ),
+    ).then(() => {
+      clearSelected();
+      fetchPage({
+        page: currentPage,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
+      });
+    });
+  };
+
+  const handleBulkUpdate = (ids: string[], updates: Partial<Transaction>) => {
+    setPageRows((prev) =>
+      prev.map((tx) => (ids.includes(tx.id) ? { ...tx, ...updates } : tx)),
+    );
+    Promise.all(
+      ids.map((id) =>
+        fetch(`/api/transactions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        }),
+      ),
+    ).then(() => {
+      clearSelected();
+      fetchPage({
+        page: currentPage,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
+      });
+    });
+  };
+
   const handleImportTransactions = (
     newTransactions: Omit<Transaction, "id" | "createdAt">[],
   ) => {
@@ -389,10 +428,13 @@ const Home = () => {
                 return s;
               })
             }
+            onSelectAll={(ids) => setSelectedIds(new Set(ids))}
             onClearSelection={clearSelected}
             onCreateGroup={handleCreateGroup}
             onAddToGroup={handleAddToGroup}
             onUnlinkChild={handleUnlinkChild}
+            onBulkDelete={handleBulkDelete}
+            onBulkUpdate={handleBulkUpdate}
           />
         </div>
         <div>

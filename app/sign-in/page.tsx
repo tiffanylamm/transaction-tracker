@@ -162,7 +162,7 @@ export default function SignInPage() {
           </div>
 
           {/* Google */}
-          <div className="px-8 py-6">
+          {/* <div className="px-8 py-6">
             <button
               onClick={() =>
                 authClient.signIn.social({
@@ -175,7 +175,7 @@ export default function SignInPage() {
               <GoogleIcon />
               Continue with Google
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </main>

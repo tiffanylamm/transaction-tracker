@@ -1,5 +1,7 @@
 export type Status = "Completed" | "Refunding" | "Owed";
 
+export const STATUSES: Status[] = ["Completed", "Owed", "Refunding"];
+
 export type Category = string
 
 export type SortDirection = 'asc' | 'desc'
