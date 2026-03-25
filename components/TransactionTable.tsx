@@ -288,7 +288,7 @@ const TransactionTable = ({
           </button>
       </div>
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-12rem)]">
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
         <table className="w-full text-left border-collapse">
           {/* Header */}
           <thead className="sticky top-0 bg-white z-2">

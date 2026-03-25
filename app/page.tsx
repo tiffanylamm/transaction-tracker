@@ -1,131 +1,25 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { SortConfig, Transaction } from "@/types/transaction";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { SortConfig, Transaction, PaginatedResponse } from "@/types/transaction";
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
+import Pagination from "@/components/Pagination";
 import { Search, Plus, Upload } from "lucide-react";
 import { computeGroupFields } from "@/lib/groupUtils";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import SettingsDrawer from "@/components/SettingsDrawer";
 
-//sample data
-// const created = Date.now();
-// const INITIAL_TRANSACTIONS: Transaction[] = [
-//   {
-//     id: "1",
-//     date: "2026-01-15",
-//     description: "TechCorp Salary",
-//     category: "Income",
-//     amount: 4250.0,
-//     status: "Refunding",
-//     source: "BofA Checking",
-//     createdAt: created,
-//     isGroup: false,
-//     parentId: null,
-//   },
-//   {
-//     id: "2",
-//     date: "2026-01-16",
-//     description: "Whole Foods Market",
-//     category: "Shopping",
-//     amount: -145.2,
-//     status: "Completed",
-//     source: "BofA Credit Card",
-//     createdAt: created + 1,
-//     isGroup: true,
-//     parentId: null,
-//   },
-//   {
-//     id: "3",
-//     date: "2026-01-18",
-//     description: "Downtown Apartment",
-//     category: "Subscriptions",
-//     amount: -1850.0,
-//     status: "Completed",
-//     source: "BofA Checking",
-//     createdAt: created + 2,
-//     isGroup: false,
-//     parentId: "2",
-//   },
-//   {
-//     id: "4",
-//     date: "2026-01-19",
-//     description: "Blue Bottle Coffee",
-//     category: "Shopping",
-//     amount: -6.5,
-//     status: "Completed",
-//     source: "BofA Debit Card",
-//     createdAt: created + 3,
-//     isGroup: false,
-//     parentId: "2",
-//   },
-//   {
-//     id: "5",
-//     date: "2026-01-20",
-//     description: "Netflix Subscription",
-//     category: "Entertainment",
-//     amount: -15.99,
-//     status: "Completed",
-//     source: "BofA Credit Card",
-//     createdAt: created + 4,
-//     isGroup: false,
-//     parentId: null,
-//   },
-//   {
-//     id: "6",
-//     date: "2026-01-22",
-//     description: "Electric Bill",
-//     category: null,
-//     amount: -85.4,
-//     status: "Completed",
-//     source: null,
-//     createdAt: created + 5,
-//     isGroup: false,
-//     parentId: null,
-//   },
-//   {
-//     id: "7",
-//     date: "2026-01-24",
-//     description: "Freelance Design Work",
-//     category: "Subscriptions",
-//     amount: 850.0,
-//     status: "Completed",
-//     source: "BofA Checking",
-//     createdAt: created + 6,
-//     isGroup: false,
-//     parentId: null,
-//   },
-//   {
-//     id: "8",
-//     date: "2026-01-25",
-//     description: "AMC Theatres",
-//     category: null,
-//     amount: -32.0,
-//     status: "Completed",
-//     source: "BofA Credit Card",
-//     createdAt: created + 7,
-//     isGroup: false,
-//     parentId: null,
-//   },
-//   {
-//     id: "9",
-//     date: "2026-01-28",
-//     description: "Internet Service",
-//     category: "Entertainment",
-//     amount: -65.0,
-//     status: "Owed",
-//     source: null,
-//     createdAt: created + 8,
-//     isGroup: false,
-//     parentId: null,
-//   },
-// ];
-
 const Home = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [pageRows, setPageRows] = useState<Transaction[]>([]);
+  const [childRows, setChildRows] = useState<Record<string, Transaction[]>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showAddRow, setShowAddRow] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -142,15 +36,62 @@ const Home = () => {
     }
   }, [session, isPending, router]);
 
+  const fetchPage = useCallback(
+    async (opts: {
+      page: number;
+      search: string;
+      sortBy: string | null;
+      sortDir: string | null;
+    }) => {
+      if (!session?.user?.id) return;
+      setIsLoading(true);
+
+      const params = new URLSearchParams();
+      params.set("page", String(opts.page));
+      if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy && opts.sortDir) {
+        params.set("sortBy", opts.sortBy);
+        params.set("sortDir", opts.sortDir);
+      }
+
+      try {
+        const res = await fetch(`/api/transactions?${params}`);
+        if (!res.ok) throw new Error("Fetch failed");
+        const json: PaginatedResponse = await res.json();
+        setPageRows(json.data);
+        setTotal(json.total);
+        setTotalPages(json.totalPages);
+        setCurrentPage(json.page);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [session?.user?.id],
+  );
+
+  // Debounce search — reset to page 1 on new query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Main fetch trigger
   useEffect(() => {
     if (!session?.user?.id) return;
-    if (prevUserIdRef.current === session.user.id) return;
-    prevUserIdRef.current = session.user.id;
-
-    fetch("/api/transactions")
-      .then((r) => r.json())
-      .then((data) => setTransactions(data));
-  }, [session?.user?.id]);
+    if (prevUserIdRef.current !== session.user.id) {
+      prevUserIdRef.current = session.user.id;
+    }
+    fetchPage({
+      page: currentPage,
+      search: debouncedSearch,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, currentPage, debouncedSearch, sortConfig]);
 
   const handleSort = (key: keyof Transaction) => {
     setSortConfig((current) => {
@@ -158,13 +99,11 @@ const Home = () => {
         return { key, direction: "asc" };
       }
       if (current.direction === "asc") {
-        return {
-          key,
-          direction: "desc",
-        };
+        return { key, direction: "desc" };
       }
       return null;
     });
+    setCurrentPage(1);
   };
 
   const handleAddTransaction = (
@@ -176,12 +115,20 @@ const Home = () => {
       id: crypto.randomUUID(),
       createdAt: now,
     };
-    setTransactions((prev) => [...prev, transaction]);
 
     fetch("/api/transactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(transaction),
+    }).then(() => {
+      setCurrentPage(1);
+      // If already on page 1, currentPage state won't change so trigger manually
+      fetchPage({
+        page: 1,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
+      });
     });
 
     setShowAddRow(false);
@@ -191,9 +138,18 @@ const Home = () => {
     id: string,
     updates: Partial<Transaction>,
   ) => {
-    setTransactions((prev) =>
+    setPageRows((prev) =>
       prev.map((tx) => (tx.id === id ? { ...tx, ...updates } : tx)),
     );
+    setChildRows((prev) => {
+      const next = { ...prev };
+      for (const groupId of Object.keys(next)) {
+        next[groupId] = next[groupId].map((tx) =>
+          tx.id === id ? { ...tx, ...updates } : tx,
+        );
+      }
+      return next;
+    });
 
     fetch(`/api/transactions/${id}`, {
       method: "PUT",
@@ -203,55 +159,140 @@ const Home = () => {
   };
 
   const handleDeleteTransaction = (id: string) => {
-    fetch(`api/transactions/${id}`, {
+    fetch(`/api/transactions/${id}`, {
       method: "DELETE",
+    }).then(() => {
+      const isLastOnPage = pageRows.length === 1 && currentPage > 1;
+      const nextPage = isLastOnPage ? currentPage - 1 : currentPage;
+      setChildRows((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      fetchPage({
+        page: nextPage,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
+      });
+      if (isLastOnPage) setCurrentPage(nextPage);
     });
 
-    const tx = transactions.find((t) => t.id === id);
-    if (tx?.isGroup) {
-      setTransactions((prev) =>
-        prev.filter((t) => t.id !== id && t.parentId !== id),
-      );
-      setExpandedIds((prev) => {
-        const s = new Set(prev);
-        s.delete(id);
-        return s;
-      });
-    } else {
-      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    setExpandedIds((prev) => {
+      const s = new Set(prev);
+      s.delete(id);
+      return s;
+    });
+  };
+
+  const handleToggleExpand = async (id: string) => {
+    setExpandedIds((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+
+    if (!childRows[id]) {
+      const res = await fetch(`/api/transactions?parentId=${id}`);
+      const data: Transaction[] = await res.json();
+      setChildRows((prev) => ({ ...prev, [id]: data }));
     }
   };
 
-  //filter + sort transactions
-  const processedTransactions = useMemo(() => {
-    let result = transactions.filter((tx) => tx.parentId === null);
-    //Filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (tx) =>
-          tx.description.toLowerCase().includes(query) ||
-          (tx.category && tx.category.toLowerCase().includes(query)) ||
-          (tx.amount && tx.amount.toString().includes(query)),
-      );
-    }
-    //Sort
-    if (sortConfig) {
-      result.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
-        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    } else {
-      //default is sort by created at
-      result.sort((a, b) => b.createdAt - a.createdAt);
-    }
-    return result;
-  }, [transactions, searchQuery, sortConfig]);
+  const allTransactions = [
+    ...pageRows,
+    ...Object.values(childRows).flat(),
+  ];
+
+  const selectedUngroupedIds = [...selectedIds].filter((id) => {
+    const item = pageRows.find((tx) => tx.id === id);
+    return item && !item.isGroup && item.parentId === null;
+  });
+
+  const clearSelected = () => setSelectedIds(new Set());
+
+  const handleCreateGroup = async (name: string) => {
+    const children = selectedUngroupedIds.map(
+      (id) => allTransactions.find((tx) => tx.id === id)!,
+    );
+    const groupInfo = computeGroupFields(children);
+    const groupId = crypto.randomUUID();
+    const groupTx = {
+      id: groupId,
+      description: name,
+      category: null,
+      ...groupInfo,
+      createdAt: Date.now(),
+      isGroup: true,
+      parentId: null,
+    };
+
+    clearSelected();
+
+    // POST first — children's parentId FK requires the group row to exist
+    const groupRes = await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(groupTx),
+    });
+    if (!groupRes.ok) return;
+
+    await Promise.all(
+      selectedUngroupedIds.map((id) =>
+        fetch(`/api/transactions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parentId: groupId }),
+        }),
+      ),
+    );
+
+    fetchPage({
+      page: currentPage,
+      search: debouncedSearch,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
+    });
+  };
+
+  const handleAddToGroup = (groupId: string) => {
+    if (selectedUngroupedIds.length === 0) return;
+
+    clearSelected();
+
+    Promise.all(
+      selectedUngroupedIds.map((id) =>
+        fetch(`/api/transactions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parentId: groupId }),
+        }),
+      ),
+    ).then(() =>
+      fetchPage({
+        page: currentPage,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
+      }),
+    );
+  };
+
+  const handleUnlinkChild = (childId: string) => {
+    fetch(`/api/transactions/${childId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentId: null }),
+    }).then(() =>
+      fetchPage({
+        page: currentPage,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
+      }),
+    );
+  };
 
   const handleImportTransactions = (
     newTransactions: Omit<Transaction, "id" | "createdAt">[],
@@ -263,115 +304,29 @@ const Home = () => {
       createdAt: now + i,
     }));
 
-    transactionsComplete.forEach((tx) => {
-      fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(tx),
-      });
-    });
-
-    setTransactions((prev) => [...prev, ...transactionsComplete]);
-  };
-
-  const selectedUngroupedIds = [...selectedIds].filter((id) => {
-    const item = transactions.find((tx) => tx.id === id);
-    return item && !item.isGroup && item.parentId === null;
-  });
-
-  const clearSelected = () => setSelectedIds(new Set());
-
-  const handleCreateGroup = (name: string) => {
-    const children = selectedUngroupedIds.map(
-      (id) => transactions.find((tx) => tx.id === id)!,
-    );
-    const groupInfo = computeGroupFields(children);
-    const groupId = crypto.randomUUID();
-
-    setTransactions((prev) => [
-      ...prev.map((tx) =>
-        selectedUngroupedIds.includes(tx.id)
-          ? { ...tx, parentId: groupId }
-          : tx,
+    Promise.all(
+      transactionsComplete.map((tx) =>
+        fetch("/api/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(tx),
+        }),
       ),
-      {
-        id: groupId,
-        description: name,
-        category: null,
-        ...groupInfo,
-        createdAt: Date.now(),
-        isGroup: true,
-        parentId: null,
-      },
-    ]);
-
-    // setExpandedIds((prev) => new Set([...prev, groupId]));
-
-    clearSelected();
-
-    fetch("/api/transactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: groupId,
-        description: name,
-        category: null,
-        ...groupInfo,
-        createdAt: Date.now(),
-        isGroup: true,
-        parentId: null,
-      }),
-    });
-
-    selectedUngroupedIds.forEach((id) => {
-      fetch(`/api/transactions/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId: groupId }),
+    ).then(() => {
+      setCurrentPage(1);
+      fetchPage({
+        page: 1,
+        search: debouncedSearch,
+        sortBy: sortConfig?.key ?? null,
+        sortDir: sortConfig?.direction ?? null,
       });
     });
   };
 
-  const handleAddToGroup = (groupId: string) => {
-    if (selectedUngroupedIds.length === 0) return;
-
-    setTransactions((prev) => [
-      ...prev.map((tx) =>
-        selectedUngroupedIds.includes(tx.id)
-          ? { ...tx, parentId: groupId }
-          : tx,
-      ),
-    ]);
-
-    clearSelected();
-
-    selectedUngroupedIds.forEach((id) => {
-      fetch(`/api/transactions/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId: groupId }),
-      });
-    });
-  };
-
-  const handleUnlinkChild = (childId: string) => {
-    const child = transactions.find((tx) => tx.id === childId);
-    if (!child?.parentId) return;
-    setTransactions((prev) => [
-      ...prev.map((tx) => (tx.id === childId ? { ...tx, parentId: null } : tx)),
-    ]);
-
-    fetch(`/api/transactions/${childId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parentId: null }),
-    });
-  };
-
-  if (isPending || !session) return null; //blank page if loading for now
+  if (isPending || !session) return null;
 
   return (
-    <main className="min-h-screen bg-white text-gray-900 font-sans">
+    <main className="h-screen overflow-hidden bg-white text-gray-900 font-sans">
       <div className="max-w-5xl mx-auto px-6 py-12">
         {/* Header Area */}
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -409,11 +364,14 @@ const Home = () => {
             <SettingsDrawer />
           </div>
         </header>
+
         {/* Main Table */}
-        <div className="mt-4 overflow-y-auto max-h-[calc(100vh-10rem)]">
+        <div
+          className={`mt-4 transition-opacity ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
+        >
           <TransactionTable
-            transactions={processedTransactions}
-            allTransactions={transactions}
+            transactions={pageRows}
+            allTransactions={allTransactions}
             sortConfig={sortConfig}
             onSort={handleSort}
             onDelete={handleDeleteTransaction}
@@ -422,13 +380,7 @@ const Home = () => {
             onAdd={handleAddTransaction}
             onCancelAdd={() => setShowAddRow(false)}
             expandedIds={expandedIds}
-            onToggleExpand={(id) =>
-              setExpandedIds((prev) => {
-                const s = new Set(prev);
-                s.has(id) ? s.delete(id) : s.add(id);
-                return s;
-              })
-            }
+            onToggleExpand={handleToggleExpand}
             selectedIds={selectedIds}
             onToggleSelect={(id) =>
               setSelectedIds((prev) => {
@@ -443,14 +395,23 @@ const Home = () => {
             onUnlinkChild={handleUnlinkChild}
           />
         </div>
-        {/*CSVImportModal */}
+        <div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            total={total}
+            isLoading={isLoading}
+            onPageChange={(page) => setCurrentPage(page)}
+          />
+        </div>
+        {/* CSVImportModal */}
         <CSVImportModal
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           onImport={handleImportTransactions}
           sourceSuggestions={[
             ...new Set(
-              transactions
+              allTransactions
                 .map((t) => t.source)
                 .filter((s): s is string => s !== null),
             ),

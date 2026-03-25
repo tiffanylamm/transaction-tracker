@@ -18,7 +18,15 @@ export interface Transaction {
 }
 
 export interface SortConfig {
-    key: keyof Transaction 
+    key: keyof Transaction
     direction: SortDirection
+}
+
+export interface PaginatedResponse {
+    data: Transaction[];
+    total: number;
+    page: number;
+    totalPages: number;
+    limit: number;
 }
 

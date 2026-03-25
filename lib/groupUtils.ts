@@ -13,7 +13,7 @@ export function computeGroupFields(
     (earliest, c) => (c.date < earliest ? c.date : earliest),
     children[0].date
   );
-  const amount = children.reduce((sum, c) => sum + c.amount, 0);
+  const amount = children.reduce((sum, c) => sum + Number(c.amount), 0);
   const status = children.reduce(
     (top, c) =>
       STATUS_PRIORITY[c.status] > STATUS_PRIORITY[top] ? c.status : top,

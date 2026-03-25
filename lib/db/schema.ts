@@ -110,25 +110,35 @@ export const accountRelations = relations(account, ({ one }) => ({
 // App tables
 // ---------------------------------------------------------------------------
 
-export const transactions = pgTable("transactions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  date: text("date").notNull(), // YYYY-MM-DD
-  description: text("description").notNull(),
-  category: text("category"),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  status: text("status").notNull(), // 'Completed' | 'Refunding' | 'Owed'
-  source: text("source"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  isGroup: boolean("is_group").notNull().default(false),
-  parentId: text("parent_id").references(
-    (): AnyPgColumn => transactions.id,
-    { onDelete: "cascade" }
-  ),
-  driveFileId: text("drive_file_id"),
-});
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // YYYY-MM-DD
+    description: text("description").notNull(),
+    category: text("category"),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    status: text("status").notNull(), // 'Completed' | 'Refunding' | 'Owed'
+    source: text("source"),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    isGroup: boolean("is_group").notNull().default(false),
+    parentId: text("parent_id").references(
+      (): AnyPgColumn => transactions.id,
+      { onDelete: "cascade" },
+    ),
+    driveFileId: text("drive_file_id"),
+  },
+  (table) => [
+    index("transactions_userId_parentId_createdAt_idx").on(
+      table.userId,
+      table.parentId,
+      table.createdAt,
+    ),
+  ],
+);
 
 export const transactionRelations = relations(transactions, ({ one, many }) => ({
   user: one(user, {
