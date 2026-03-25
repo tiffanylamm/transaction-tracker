@@ -6,6 +6,7 @@ interface InputAutocompleteProps {
   onChange: (val: string) => void;
   suggestions: string[];
   className?: string;
+  placeholder?: string;
   onBlur?: () => void;
   onCancel?: () => void;
   onCommit?: (val: string) => void;
@@ -15,6 +16,7 @@ const InputAutocomplete = ({
   value,
   onChange,
   suggestions,
+  placeholder,
   onBlur,
   onCancel,
   onCommit,
@@ -40,7 +42,7 @@ const InputAutocomplete = ({
     >
       <Autocomplete.Input
         className={`w-full bg-transparent border border-gray-200 focus:ring-1 focus:ring-gray-200 px-3 py-1 text-[13px] text-gray-900 placeholder-gray-400 transition-colors outline-none rounded`}
-        placeholder="Category..."
+        placeholder={placeholder ?? ""}
         onBlur={onBlur}
         onKeyDown={(e) => {
           if (e.key === "Enter") {

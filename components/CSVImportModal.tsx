@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Transaction, Category, Status } from "@/types/transaction";
+import { Transaction, Status } from "@/types/transaction";
 import { Upload, X } from "lucide-react";
 
 interface CSVImportModalProps {
@@ -236,10 +236,10 @@ const CSVImportModal = ({ isOpen, onClose, onImport }: CSVImportModalProps) => {
       return {
         date: cleanDate,
         description: descriptionStr,
-        category: "None" as Category,
+        category: null,
         amount: isNaN(cleanAmount) ? 0 : cleanAmount,
         status: "Completed" as Status,
-        isSelected: false
+        source: null
       };
     });
     onImport(newTransactions);

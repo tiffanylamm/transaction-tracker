@@ -16,6 +16,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Income",
     amount: 4250.0,
     status: "Refunding",
+    source: "BofA Checking",
     createdAt: created,
   },
   {
@@ -25,6 +26,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Shopping",
     amount: -145.2,
     status: "Completed",
+    source: "BofA Credit Card",
     createdAt: created + 1,
   },
   {
@@ -34,6 +36,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Subscriptions",
     amount: -1850.0,
     status: "Completed",
+    source: "BofA Checking",
     createdAt: created + 2,
   },
   {
@@ -43,6 +46,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Shopping",
     amount: -6.5,
     status: "Completed",
+    source: "BofA Debit Card",
     createdAt: created + 3,
   },
   {
@@ -52,6 +56,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Entertainment",
     amount: -15.99,
     status: "Completed",
+    source: "BofA Credit Card",
     createdAt: created + 4,
   },
   {
@@ -61,6 +66,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: null,
     amount: -85.4,
     status: "Completed",
+    source: null,
     createdAt: created + 5,
   },
   {
@@ -70,6 +76,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Subscriptions",
     amount: 850.0,
     status: "Completed",
+    source: "BofA Checking",
     createdAt: created + 6,
   },
   {
@@ -79,6 +86,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: null,
     amount: -32.0,
     status: "Completed",
+    source: "BofA Credit Card",
     createdAt: created + 7,
   },
   {
@@ -88,6 +96,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: "Entertainment",
     amount: -65.0,
     status: "Owed",
+    source: null,
     createdAt: created + 8,
   },
 ];
