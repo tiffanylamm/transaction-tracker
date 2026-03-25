@@ -13,6 +13,8 @@ export interface Transaction {
     status: Status
     source: string | null
     createdAt: number //timestamp since never displayed
+    isGroup: boolean
+    parentId: string | null
 }
 
 export interface SortConfig {

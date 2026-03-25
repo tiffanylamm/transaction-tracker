@@ -5,6 +5,7 @@ import { SortConfig, Transaction } from "@/types/transaction";
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
 import { Search, Plus, Upload } from "lucide-react";
+import { computeGroupFields } from "@/lib/groupUtils";
 
 //sample data
 const created = Date.now();
@@ -18,6 +19,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Refunding",
     source: "BofA Checking",
     createdAt: created,
+    isGroup: false,
+    parentId: null,
   },
   {
     id: "2",
@@ -28,6 +31,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: "BofA Credit Card",
     createdAt: created + 1,
+    isGroup: true,
+    parentId: null,
   },
   {
     id: "3",
@@ -38,6 +43,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: "BofA Checking",
     createdAt: created + 2,
+    isGroup: false,
+    parentId: "2",
   },
   {
     id: "4",
@@ -48,6 +55,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: "BofA Debit Card",
     createdAt: created + 3,
+    isGroup: false,
+    parentId: "2",
   },
   {
     id: "5",
@@ -58,6 +67,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: "BofA Credit Card",
     createdAt: created + 4,
+    isGroup: false,
+    parentId: null,
   },
   {
     id: "6",
@@ -68,6 +79,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: null,
     createdAt: created + 5,
+    isGroup: false,
+    parentId: null,
   },
   {
     id: "7",
@@ -78,6 +91,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: "BofA Checking",
     createdAt: created + 6,
+    isGroup: false,
+    parentId: null,
   },
   {
     id: "8",
@@ -88,6 +103,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Completed",
     source: "BofA Credit Card",
     createdAt: created + 7,
+    isGroup: false,
+    parentId: null,
   },
   {
     id: "9",
@@ -98,6 +115,8 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     status: "Owed",
     source: null,
     createdAt: created + 8,
+    isGroup: false,
+    parentId: null,
   },
 ];
 
@@ -108,6 +127,9 @@ const Home = () => {
   const [showAddRow, setShowAddRow] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([]));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([]));
+
   const handleSort = (key: keyof Transaction) => {
     setSortConfig((current) => {
       if (!current || current.key !== key) {
@@ -146,19 +168,26 @@ const Home = () => {
   };
 
   const handleDeleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+    const tx = transactions.find((t) => t.id === id);
+    if (tx?.isGroup) {
+      setTransactions((prev) => prev.filter((t) => t.id !== id && t.parentId !== id));
+      setExpandedIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    } else {
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    }
   };
 
   //filter + sort transactions
   const processedTransactions = useMemo(() => {
-    let result = [...transactions];
+    let result = transactions.filter((tx) => tx.parentId === null);
     //Filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         (tx) =>
           tx.description.toLowerCase().includes(query) ||
-          (tx.category && tx.category.toLowerCase().includes(query)),
+          (tx.category && tx.category.toLowerCase().includes(query)) ||
+          (tx.amount && tx.amount.toString().includes(query)),
       );
     }
     //Sort
@@ -189,6 +218,65 @@ const Home = () => {
       createdAt: now + i,
     }));
     setTransactions((prev) => [...prev, ...transactionsComplete]);
+  };
+
+  const selectedUngroupedIds = [...selectedIds].filter((id) => {
+    const item = transactions.find((tx) => tx.id === id);
+    return item && !item.isGroup && item.parentId === null;
+  });
+
+  const clearSelected = () => setSelectedIds(new Set());
+
+  const handleCreateGroup = (name: string) => {
+    const children = selectedUngroupedIds.map(
+      (id) => transactions.find((tx) => tx.id === id)!,
+    );
+    const groupInfo = computeGroupFields(children);
+    const groupId = crypto.randomUUID();
+
+    setTransactions((prev) => [
+      ...prev.map((tx) =>
+        selectedUngroupedIds.includes(tx.id)
+          ? { ...tx, parentId: groupId }
+          : tx,
+      ),
+      {
+        id: groupId,
+        description: name,
+        category: null,
+        ...groupInfo,
+        createdAt: Date.now(),
+        isGroup: true,
+        parentId: null,
+      },
+    ]);
+
+    setExpandedIds((prev) => new Set([...prev, groupId]));
+
+    clearSelected();
+  };
+
+  const handleAddToGroup = (groupId: string) => {
+    if (selectedUngroupedIds.length === 0) return;
+
+    setTransactions((prev) => [
+      ...prev.map((tx) =>
+        selectedUngroupedIds.includes(tx.id)
+          ? { ...tx, parentId: groupId }
+          : tx,
+      ),
+    ]);
+
+    clearSelected();
+  };
+
+  const handleUnlinkChild = (childId: string) => {
+    const child = transactions.find((tx) => tx.id === childId);
+    if (!child?.parentId) return;
+    setTransactions((prev) => [
+      ...prev.map((tx) => (tx.id === childId ? { ...tx, parentId: null } : tx)),
+    ]);
+    //no auto-dissolving can have 1 child under parent
   };
 
   return (
@@ -229,9 +317,10 @@ const Home = () => {
           </div>
         </header>
         {/* Main Table */}
-        <div className="mt-4">
+        <div className="mt-4 overflow-y-auto max-h-[calc(100vh-10rem)]">
           <TransactionTable
             transactions={processedTransactions}
+            allTransactions={transactions}
             sortConfig={sortConfig}
             onSort={handleSort}
             onDelete={handleDeleteTransaction}
@@ -239,6 +328,26 @@ const Home = () => {
             showAddRow={showAddRow}
             onAdd={handleAddTransaction}
             onCancelAdd={() => setShowAddRow(false)}
+            expandedIds={expandedIds}
+            onToggleExpand={(id) =>
+              setExpandedIds((prev) => {
+                const s = new Set(prev);
+                s.has(id) ? s.delete(id) : s.add(id);
+                return s;
+              })
+            }
+            selectedIds={selectedIds}
+            onToggleSelect={(id) =>
+              setSelectedIds((prev) => {
+                const s = new Set(prev);
+                s.has(id) ? s.delete(id) : s.add(id);
+                return s;
+              })
+            }
+            onClearSelection={clearSelected}
+            onCreateGroup={handleCreateGroup}
+            onAddToGroup={handleAddToGroup}
+            onUnlinkChild={handleUnlinkChild}
           />
         </div>
         {/*CSVImportModal */}
@@ -246,7 +355,13 @@ const Home = () => {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           onImport={handleImportTransactions}
-          sourceSuggestions={[...new Set(transactions.map((t) => t.source).filter((s): s is string => s !== null))]}
+          sourceSuggestions={[
+            ...new Set(
+              transactions
+                .map((t) => t.source)
+                .filter((s): s is string => s !== null),
+            ),
+          ]}
         />
       </div>
     </main>
