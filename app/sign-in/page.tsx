@@ -16,29 +16,33 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.SubmitEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    if (tab === "sign-in") {
-      await authClient.signIn.email({
-        email,
-        password,
-        rememberMe: false,
-      }, {
-        onError: (ctx) => { setError(ctx.error.message); },
-        onSuccess: () => { router.replace("/"); },
-      });
-    } else {
-      await authClient.signUp.email({
-        name,
-        email,
-        password,
-      }, {
-        onError: (ctx) => { setError(ctx.error.message ?? "Sign up failed"); },
-        onSuccess: () => { router.replace("/"); },
-      });
+    try {
+      if (tab === "sign-in") {
+        await authClient.signIn.email({
+          email,
+          password,
+          rememberMe: false,
+        }, {
+          onError: (ctx) => { setError(ctx.error.message); },
+          onSuccess: () => { router.replace("/"); },
+        });
+      } else {
+        await authClient.signUp.email({
+          name,
+          email,
+          password,
+        }, {
+          onError: (ctx) => { setError(ctx.error.message ?? "Sign up failed"); },
+          onSuccess: () => { router.replace("/"); },
+        });
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
     }
 
     setLoading(false);
