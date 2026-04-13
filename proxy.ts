@@ -111,6 +111,7 @@ export async function proxy(request: NextRequest) {
   // Auth guard — skip for public routes
   if (!isPublicPath(pathname)) {
     const sessionCookie = request.cookies.get("better-auth.session_token");
+    console.log("[proxy] path:", pathname, "| cookie:", sessionCookie?.value ?? "MISSING");
     if (!sessionCookie?.value) {
       const signInUrl = new URL("/sign-in", request.url);
       return NextResponse.redirect(signInUrl);
