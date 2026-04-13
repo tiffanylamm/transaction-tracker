@@ -196,6 +196,7 @@ const Home = () => {
     if (!childRows[id]) {
       const res = await fetch(`/api/transactions?parentId=${id}`);
       const data: Transaction[] = await res.json();
+      console.log(`DEBUG: ${data}`)
       setChildRows((prev) => ({ ...prev, [id]: data }));
     }
   };
@@ -217,9 +218,7 @@ const Home = () => {
       (id) => allTransactions.find((tx) => tx.id === id)!,
     );
     const groupInfo = computeGroupFields(children);
-    const groupId = crypto.randomUUID();
     const groupTx = {
-      id: groupId,
       description: name,
       category: null,
       ...groupInfo,
@@ -238,12 +237,15 @@ const Home = () => {
     });
     if (!groupRes.ok) return;
 
+    const createdGroup = await groupRes.json();
+    const actualGroupId = createdGroup.id;
+
     await Promise.all(
       selectedUngroupedIds.map((id) =>
         fetch(`/api/transactions/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ parentId: groupId }),
+          body: JSON.stringify({ parentId: actualGroupId }),
         }),
       ),
     );
