@@ -369,9 +369,12 @@ const Home = () => {
       <div className="max-w-5xl mx-auto px-6 py-12">
         {/* Header Area */}
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <h1 className="text-xl font-semibold tracking-tight text-gray-900">
-            Transactions
-          </h1>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Logo" width={28} height={28} />
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">
+              Transactions
+            </h1>
+          </div>
           <div className="flex items-center gap-4">
             <div className="relative group">
               <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-gray-600 transition-colors" />

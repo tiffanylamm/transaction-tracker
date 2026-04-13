@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { transactions } from "@/lib/db/schema";
 import { eq, desc, asc, and, isNull, ilike, or, count, SQL } from "drizzle-orm";
+import { STATUSES } from "@/types/transaction";
 
 const SORTABLE_COLUMNS = {
   date: transactions.date,
@@ -102,9 +103,39 @@ export async function POST(request: Request) {
 
   const body = await request.json();
 
+  const { date, description, category, amount, status, source, isGroup, parentId } = body;
+
+  if (!date || typeof date !== "string") {
+    return Response.json({ error: "date is required and must be a string" }, { status: 400 });
+  }
+  if (!description || typeof description !== "string") {
+    return Response.json({ error: "description is required and must be a string" }, { status: 400 });
+  }
+  if (amount === undefined || (typeof amount !== "number" && typeof amount !== "string")) {
+    return Response.json({ error: "amount is required and must be a number" }, { status: 400 });
+  }
+  if (isNaN(Number(amount))) {
+    return Response.json({ error: "amount must be a valid number" }, { status: 400 });
+  }
+  if (status && !STATUSES.includes(status)) {
+    return Response.json({ error: `status must be one of: ${STATUSES.join(", ")}` }, { status: 400 });
+  }
+
   const [row] = await db
     .insert(transactions)
-    .values({ ...body, userId: session.user.id })
+    .values({
+      id: crypto.randomUUID(),
+      date,
+      description,
+      category: category ?? null,
+      amount: String(amount),
+      status: status ?? "Completed",
+      source: source ?? null,
+      createdAt: Date.now(),
+      isGroup: isGroup ?? false,
+      parentId: parentId ?? null,
+      userId: session.user.id,
+    })
     .returning();
 
   return Response.json(row, { status: 201 });
