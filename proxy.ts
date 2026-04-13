@@ -113,8 +113,7 @@ export async function proxy(request: NextRequest) {
     const sessionCookie =
       request.cookies.get("__Secure-better-auth.session_token") ??
       request.cookies.get("better-auth.session_token");
-    console.log("[proxy] path:", pathname, "| cookie:", sessionCookie?.value ?? "MISSING", "| all cookies:", request.cookies.getAll().map(c => c.name));
-    if (!sessionCookie?.value) {
+if (!sessionCookie?.value) {
       const signInUrl = new URL("/sign-in", request.url);
       return NextResponse.redirect(signInUrl);
     }
