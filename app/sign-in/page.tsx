@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
 type Tab = "sign-in" | "sign-up";
@@ -13,6 +14,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,7 +29,7 @@ export default function SignInPage() {
           rememberMe: false,
         }, {
           onError: (ctx) => { setError(ctx.error.message); },
-          onSuccess: () => { window.location.href = "/"; },
+          onSuccess: () => { router.replace("/"); },
         });
       } else {
         await authClient.signUp.email({
@@ -36,7 +38,7 @@ export default function SignInPage() {
           password,
         }, {
           onError: (ctx) => { setError(ctx.error.message ?? "Sign up failed"); },
-          onSuccess: () => { window.location.href = "/"; },
+          onSuccess: () => { router.replace("/"); },
         });
       }
     } catch {
