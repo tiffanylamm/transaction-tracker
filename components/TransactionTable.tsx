@@ -607,7 +607,14 @@ const TransactionTable = ({
                             className={`${editInputClass} font-medium`}
                           />
                         ) : (
-                          <span className="block py-px">{tx.description}</span>
+                          <span className="flex items-center gap-1.5 py-px">
+                            <span>{tx.description}</span>
+                            {tx.isGroup && tx.childCount !== undefined && (
+                              <span className="text-gray-400 text-[11px] font-normal">
+                                · {tx.childCount} {tx.childCount === 1 ? "Transaction" : "Transactions"}
+                              </span>
+                            )}
+                          </span>
                         )}
                       </td>
 

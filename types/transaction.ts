@@ -17,6 +17,7 @@ export interface Transaction {
     createdAt: number //timestamp since never displayed
     isGroup: boolean
     parentId: string | null
+    childCount?: number
 }
 
 export interface SortConfig {

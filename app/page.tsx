@@ -196,6 +196,7 @@ const Home = () => {
     if (!childRows[id]) {
       const res = await fetch(`/api/transactions?parentId=${id}`);
       const data: Transaction[] = await res.json();
+      console.log(`DEBUG: ${data}`)
       setChildRows((prev) => ({ ...prev, [id]: data }));
     }
   };
@@ -217,9 +218,7 @@ const Home = () => {
       (id) => allTransactions.find((tx) => tx.id === id)!,
     );
     const groupInfo = computeGroupFields(children);
-    const groupId = crypto.randomUUID();
     const groupTx = {
-      id: groupId,
       description: name,
       category: null,
       ...groupInfo,
@@ -238,12 +237,15 @@ const Home = () => {
     });
     if (!groupRes.ok) return;
 
+    const createdGroup = await groupRes.json();
+    const actualGroupId = createdGroup.id;
+
     await Promise.all(
       selectedUngroupedIds.map((id) =>
         fetch(`/api/transactions/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ parentId: groupId }),
+          body: JSON.stringify({ parentId: actualGroupId }),
         }),
       ),
     );
@@ -259,6 +261,10 @@ const Home = () => {
   const handleAddToGroup = (groupId: string) => {
     if (selectedUngroupedIds.length === 0) return;
 
+    const addedTransactions = selectedUngroupedIds
+      .map((id) => allTransactions.find((tx) => tx.id === id)!)
+      .filter(Boolean);
+
     clearSelected();
 
     Promise.all(
@@ -269,29 +275,60 @@ const Home = () => {
           body: JSON.stringify({ parentId: groupId }),
         }),
       ),
-    ).then(() =>
+    ).then(() => {
+      if (childRows[groupId]) {
+        const updatedChildren = [
+          ...childRows[groupId],
+          ...addedTransactions.map((tx) => ({ ...tx, parentId: groupId })),
+        ];
+        setChildRows((prev) => ({ ...prev, [groupId]: updatedChildren }));
+        handleUpdateTransaction(groupId, computeGroupFields(updatedChildren));
+      }
+
       fetchPage({
         page: currentPage,
         search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
-      }),
-    );
+      });
+    });
   };
 
   const handleUnlinkChild = (childId: string) => {
+    const parentGroupId =
+      Object.keys(childRows).find((gid) =>
+        childRows[gid].some((tx) => tx.id === childId),
+      ) ?? null;
+
     fetch(`/api/transactions/${childId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parentId: null }),
-    }).then(() =>
+    }).then(() => {
+      setChildRows((prev) => {
+        const next = { ...prev };
+        for (const groupId of Object.keys(next)) {
+          next[groupId] = next[groupId].filter((tx) => tx.id !== childId);
+        }
+        return next;
+      });
+
+      if (parentGroupId) {
+        const remaining = childRows[parentGroupId].filter((tx) => tx.id !== childId);
+        if (remaining.length === 0) {
+          handleDeleteTransaction(parentGroupId);
+          return;
+        }
+        handleUpdateTransaction(parentGroupId, computeGroupFields(remaining));
+      }
+
       fetchPage({
         page: currentPage,
         search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
-      }),
-    );
+      });
+    });
   };
 
   const handleBulkDelete = (ids: string[]) => {

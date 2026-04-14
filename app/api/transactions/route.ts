@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { transactions } from "@/lib/db/schema";
-import { eq, desc, asc, and, isNull, ilike, or, count, SQL } from "drizzle-orm";
+import { eq, desc, asc, and, isNull, ilike, or, count, inArray, SQL } from "drizzle-orm";
 import { STATUSES } from "@/types/transaction";
 
 const SORTABLE_COLUMNS = {
@@ -87,8 +87,26 @@ export async function GET(request: Request) {
 
   const total = Number(countResult[0].total);
 
+  // Fetch child counts for any group rows on this page
+  const groupIds = data.filter((tx) => tx.isGroup).map((tx) => tx.id);
+  const childCountMap: Record<string, number> = {};
+  if (groupIds.length > 0) {
+    const childCounts = await db
+      .select({ parentId: transactions.parentId, total: count() })
+      .from(transactions)
+      .where(and(eq(transactions.userId, session.user.id), inArray(transactions.parentId, groupIds)))
+      .groupBy(transactions.parentId);
+    for (const row of childCounts) {
+      if (row.parentId) childCountMap[row.parentId] = Number(row.total);
+    }
+  }
+
+  const dataWithCounts = data.map((tx) =>
+    tx.isGroup ? { ...tx, childCount: childCountMap[tx.id] ?? 0 } : tx,
+  );
+
   return Response.json({
-    data,
+    data: dataWithCounts,
     total,
     page,
     totalPages: Math.ceil(total / limit),
