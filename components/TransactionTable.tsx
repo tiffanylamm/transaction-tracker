@@ -49,7 +49,6 @@ const localToday = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-
 const LOCKED_GROUP_FIELDS = new Set(["date", "amount", "status", "source"]);
 
 type EditableFields =
@@ -128,7 +127,9 @@ const TransactionTable = ({
     [transactions],
   );
 
-  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const allSelected =
+    selectableIds.length > 0 &&
+    selectableIds.every((id) => selectedIds.has(id));
   const someSelected = selectableIds.some((id) => selectedIds.has(id));
 
   const selectedUngroupedIds = useMemo(
@@ -182,12 +183,15 @@ const TransactionTable = ({
     const tx = allTransactions.find((t) => t.id === id);
     if (field === "amount") {
       const parsed = parseFloat(editValue);
-      if (!isNaN(parsed) && parsed !== tx?.amount) onUpdate(id, { amount: parsed });
+      if (!isNaN(parsed) && parsed !== tx?.amount)
+        onUpdate(id, { amount: parsed });
     } else if (field === "date") {
-      if (editValue && editValue !== tx?.date) onUpdate(id, { date: editValue });
+      if (editValue && editValue !== tx?.date)
+        onUpdate(id, { date: editValue });
     } else if (field === "description") {
       const trimmed = editValue.trim();
-      if (trimmed && trimmed !== tx?.description) onUpdate(id, { description: trimmed });
+      if (trimmed && trimmed !== tx?.description)
+        onUpdate(id, { description: trimmed });
     } else if (field === "category") {
       const val = editValue.trim() || null;
       if (val !== (tx?.category ?? null)) onUpdate(id, { category: val });
@@ -195,7 +199,8 @@ const TransactionTable = ({
       const val = editValue.trim() || null;
       if (val !== (tx?.source ?? null)) onUpdate(id, { source: val });
     } else if (field === "status") {
-      if (editValue !== tx?.status) onUpdate(id, { status: editValue as Status });
+      if (editValue !== tx?.status)
+        onUpdate(id, { status: editValue as Status });
     }
     setEditingCell(null);
     setEditValue("");
@@ -277,8 +282,8 @@ const TransactionTable = ({
   const isEditing = (id: string, field: EditableFields) =>
     editingCell?.id === id && editingCell?.field === field;
 
-  const thClass = `py-3 px-4 font-normal text-[11px] uppercase tracking-wider text-gray-500 border-b border-gray-200 select-none`;
-  const tdClass = `py-2.5 px-4 text-[13px] border-b border-gray-100 whitespace-nowrap`;
+  const thClass = `h-9 px-4 font-normal text-[11px] uppercase tracking-wider text-gray-500 border-b border-gray-200 select-none`;
+  const tdClass = `h-9 px-4 text-[13px] border-b border-gray-100 whitespace-nowrap`;
   const addInputClass = `w-full bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:ring-0 p-1 text-[13px] text-gray-900 placeholder-gray-400 transition-colors outline-none`;
   const editInputClass = `w-full bg-transparent border-0 outline-none text-[13px] text-gray-900 p-0 m-0 focus:ring-0 caret-gray-400`;
 
@@ -286,33 +291,45 @@ const TransactionTable = ({
     <div className="w-full">
       {/* Toolbar — always reserves space to prevent table shift */}
       <div className="flex items-center gap-2 mb-3 flex-wrap h-8">
-          <span className="text-[12px] text-gray-400 tabular-nums w-[70px] shrink-0">
-            {selectedIds.size} selected
-          </span>
-          <button
-            onClick={async () => {
-              if (selectedUngroupedIds.length < 1) return;
-              const newGroupId = await onCreateGroup("New Group");
-              pendingFocusIdRef.current = newGroupId;
-            }}
-            className="flex items-center gap-1 px-2 h-7 text-[12px] text-white bg-gray-800 rounded transition-colors cursor-pointer"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            Merge
-          </button>
-          <BulkActions
-            selectedIds={selectedIds}
-            onBulkDelete={onBulkDelete}
-            onBulkUpdate={onBulkUpdate}
-            onClearSelection={onClearSelection}
-            onAddToGroup={onAddToGroup}
-            allGroups={allGroups}
-            allCategories={allCategories}
-            allSources={allSources}
-          />
+        <span className="text-[12px] text-gray-400 tabular-nums w-18 shrink-0">
+          {selectedIds.size} selected
+        </span>
+        <button
+          onClick={async () => {
+            if (selectedUngroupedIds.length < 1) return;
+            const newGroupId = await onCreateGroup("New Group");
+            pendingFocusIdRef.current = newGroupId;
+          }}
+          className="flex items-center gap-1 px-2 h-7 text-[12px] text-white bg-gray-800 rounded transition-colors cursor-pointer"
+        >
+          <Layers className="w-3.5 h-3.5" />
+          Merge
+        </button>
+        <BulkActions
+          selectedIds={selectedIds}
+          onBulkDelete={onBulkDelete}
+          onBulkUpdate={onBulkUpdate}
+          onClearSelection={onClearSelection}
+          onAddToGroup={onAddToGroup}
+          allGroups={allGroups}
+          allCategories={allCategories}
+          allSources={allSources}
+        />
+        <button
+          onClick={() => {
+            onClearSelection();
+          }}
+          className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
+          aria-label="Clear selection"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      <div ref={tableContainerRef} className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
+      <div
+        ref={tableContainerRef}
+        className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]"
+      >
         <table className="w-full text-left border-collapse">
           {/* Header */}
           <thead className="sticky top-0 bg-white z-2">
@@ -323,10 +340,14 @@ const TransactionTable = ({
                     <input
                       type="checkbox"
                       checked={allSelected}
-                      ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected && !allSelected;
+                      }}
                       onChange={() => {
                         if (allSelected) {
-                          onClearSelection();
+                          for (const tx of transactions) {
+                            if (!tx.isGroup) onToggleSelect(tx);
+                          }
                         } else {
                           onSelectAll(transactions.filter((tx) => !tx.isGroup));
                         }
@@ -379,8 +400,8 @@ const TransactionTable = ({
             {/* Add Transaction Row */}
             {showAddRow && (
               <tr className="bg-gray-50/50 border-b border-gray-200">
-                <td className="py-2 px-3" />
-                <td className="py-2 px-3">
+                <td className="h-9 px-3" />
+                <td className="h-9 px-3">
                   <input
                     type="date"
                     value={newTransaction.date}
@@ -394,7 +415,7 @@ const TransactionTable = ({
                     autoFocus
                   />
                 </td>
-                <td className="py-2 px-3">
+                <td className="h-9 px-3">
                   <input
                     type="text"
                     placeholder="Description..."
@@ -408,7 +429,7 @@ const TransactionTable = ({
                     }
                   />
                 </td>
-                <td className="py-2 px-3">
+                <td className="h-9 px-3">
                   <InputAutocomplete
                     value={newTransaction.category ?? ""}
                     onChange={(val) =>
@@ -422,7 +443,7 @@ const TransactionTable = ({
                     positionerZIndex={50}
                   />
                 </td>
-                <td className="py-2 px-3">
+                <td className="h-9 px-3">
                   <input
                     type="number"
                     placeholder="0.00"
@@ -437,7 +458,7 @@ const TransactionTable = ({
                     }
                   />
                 </td>
-                <td className="py-2 px-3">
+                <td className="h-9 px-3">
                   <select
                     value={newTransaction.status}
                     className={addInputClass}
@@ -455,7 +476,7 @@ const TransactionTable = ({
                     ))}
                   </select>
                 </td>
-                <td className="py-2 px-3">
+                <td className="h-9 px-3">
                   <InputAutocomplete
                     value={newTransaction.source ?? ""}
                     onChange={(val) =>
@@ -469,7 +490,7 @@ const TransactionTable = ({
                     positionerZIndex={50}
                   />
                 </td>
-                <td className="py-2 px-3 text-right">
+                <td className="py-1.5 px-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={handleSaveNew}
@@ -609,10 +630,13 @@ const TransactionTable = ({
                           />
                         ) : (
                           <span className="flex items-center gap-1.5 py-px">
-                            <span>{tx.description}</span>
+                            <span className="uppercase">{tx.description}</span>
                             {tx.isGroup && tx.childCount !== undefined && (
                               <span className="text-gray-400 text-[11px] font-normal">
-                                · {tx.childCount} {tx.childCount === 1 ? "Transaction" : "Transactions"}
+                                · {tx.childCount}{" "}
+                                {tx.childCount === 1
+                                  ? "Transaction"
+                                  : "Transactions"}
                               </span>
                             )}
                           </span>
@@ -857,7 +881,9 @@ const TransactionTable = ({
                                 />
                               ) : (
                                 <span className="cursor-text block py-px">
-                                  {child.description}
+                                  <span className="uppercase">
+                                    {child.description}
+                                  </span>
                                 </span>
                               )}
                             </div>
