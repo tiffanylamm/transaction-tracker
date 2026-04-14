@@ -2,9 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { transactions } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { STATUSES } from "@/types/transaction";
-
-const UPDATABLE_FIELDS = ["date", "description", "category", "amount", "status", "source", "parentId"] as const;
+import { STATUSES, UPDATABLE_FIELDS } from "@/types/transaction";
 
 export async function PUT(
   request: Request,

@@ -2,6 +2,8 @@ export type Status = "Completed" | "Refunding" | "Owed";
 
 export const STATUSES: Status[] = ["Completed", "Owed", "Refunding"];
 
+export const UPDATABLE_FIELDS = ["date", "description", "category", "amount", "status", "source", "parentId"] as const;
+
 export type Category = string
 
 export type SortDirection = 'asc' | 'desc'

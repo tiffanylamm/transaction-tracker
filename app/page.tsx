@@ -367,11 +367,11 @@ const Home = () => {
   };
 
   const handleBulkDelete = (ids: string[]) => {
-    Promise.all(
-      ids.map((id) =>
-        fetch(`/api/transactions/${id}`, { method: "DELETE" }),
-      ),
-    ).then(() => {
+    fetch("/api/transactions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    }).then(() => {
       clearSelected();
       fetchPage({
         page: currentPage,
@@ -386,15 +386,11 @@ const Home = () => {
     setPageRows((prev) =>
       prev.map((tx) => (ids.includes(tx.id) ? { ...tx, ...updates } : tx)),
     );
-    Promise.all(
-      ids.map((id) =>
-        fetch(`/api/transactions/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
-        }),
-      ),
-    ).then(() => {
+    fetch("/api/transactions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, updates }),
+    }).then(() => {
       clearSelected();
       fetchPage({
         page: currentPage,
@@ -410,33 +406,27 @@ const Home = () => {
   ) => {
     const now = Date.now();
     const sorted = [...newTransactions].sort((a, b) => b.date.localeCompare(a.date))
-    const transactionsComplete = sorted.map((tx, i) => ({
+    const withTimestamps = sorted.map((tx, i) => ({
       ...tx,
-      id: crypto.randomUUID(),
       createdAt: now - i,
     }));
 
-    Promise.all(
-      transactionsComplete.map((tx) =>
-        fetch("/api/transactions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tx),
-        }),
-      ),
-    ).then(() => {
-      // import doesn't have categories or source 
-      // for (const tx of newTransactions) {
-      //   trackMetadata(tx);
-      // }
-      setCurrentPage(1);
-      fetchPage({
-        page: 1,
-        search: debouncedSearch,
-        sortBy: sortConfig?.key ?? null,
-        sortDir: sortConfig?.direction ?? null,
+    fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(withTimestamps),
+    })
+      .then((res) => res.json())
+      .then((created: Transaction[]) => {
+        setSelectedIds(new Set(created.map((row) => row.id)));
+        setCurrentPage(1);
+        fetchPage({
+          page: 1,
+          search: debouncedSearch,
+          sortBy: sortConfig?.key ?? null,
+          sortDir: sortConfig?.direction ?? null,
+        });
       });
-    });
   };
 
   if (isPending || !session) return null;
