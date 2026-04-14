@@ -29,9 +29,9 @@ interface TransactionTableProps {
   onCancelAdd: () => void;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
-  selectedIds: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onSelectAll: (ids: string[]) => void;
+  selectedIds: Map<string, Transaction>;
+  onToggleSelect: (tx: Transaction) => void;
+  onSelectAll: (txs: Transaction[]) => void;
   onClearSelection: () => void;
   onCreateGroup: (name: string) => Promise<string>;
   onAddToGroup: (groupId: string) => void;
@@ -41,6 +41,7 @@ interface TransactionTableProps {
   allGroups: Transaction[];
   allCategories: string[];
   allSources: string[];
+  currentPage: number;
 }
 
 const localToday = () => {
@@ -83,6 +84,7 @@ const TransactionTable = ({
   allGroups,
   allCategories,
   allSources,
+  currentPage,
 }: TransactionTableProps) => {
   const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>({
     date: localToday(),
@@ -101,6 +103,11 @@ const TransactionTable = ({
   } | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    tableContainerRef.current?.scrollTo(0, 0);
+  }, [currentPage]);
 
   const allSuggestions = useMemo(() => {
     const used = allTransactions
@@ -126,12 +133,10 @@ const TransactionTable = ({
 
   const selectedUngroupedIds = useMemo(
     () =>
-      allTransactions
-        .filter(
-          (tx) => selectedIds.has(tx.id) && !tx.isGroup && tx.parentId === null,
-        )
+      [...selectedIds.values()]
+        .filter((tx) => !tx.isGroup && tx.parentId === null)
         .map((tx) => tx.id),
-    [allTransactions, selectedIds],
+    [selectedIds],
   );
 
   const existingGroups = useMemo(
@@ -174,19 +179,23 @@ const TransactionTable = ({
   const commitEdit = () => {
     if (!editingCell) return;
     const { id, field } = editingCell;
+    const tx = allTransactions.find((t) => t.id === id);
     if (field === "amount") {
       const parsed = parseFloat(editValue);
-      if (!isNaN(parsed)) onUpdate(id, { amount: parsed });
+      if (!isNaN(parsed) && parsed !== tx?.amount) onUpdate(id, { amount: parsed });
     } else if (field === "date") {
-      if (editValue) onUpdate(id, { date: editValue });
+      if (editValue && editValue !== tx?.date) onUpdate(id, { date: editValue });
     } else if (field === "description") {
-      if (editValue.trim()) onUpdate(id, { description: editValue.trim() });
+      const trimmed = editValue.trim();
+      if (trimmed && trimmed !== tx?.description) onUpdate(id, { description: trimmed });
     } else if (field === "category") {
-      onUpdate(id, { category: editValue.trim() || null });
+      const val = editValue.trim() || null;
+      if (val !== (tx?.category ?? null)) onUpdate(id, { category: val });
     } else if (field === "source") {
-      onUpdate(id, { source: editValue.trim() || null });
+      const val = editValue.trim() || null;
+      if (val !== (tx?.source ?? null)) onUpdate(id, { source: val });
     } else if (field === "status") {
-      onUpdate(id, { status: editValue as Status });
+      if (editValue !== tx?.status) onUpdate(id, { status: editValue as Status });
     }
     setEditingCell(null);
     setEditValue("");
@@ -278,7 +287,7 @@ const TransactionTable = ({
       {/* Toolbar — always reserves space to prevent table shift */}
       <div className="flex items-center gap-2 mb-3 flex-wrap h-8">
           <span className="text-[12px] text-gray-400 tabular-nums w-[70px] shrink-0">
-            {selectedUngroupedIds.length} selected
+            {selectedIds.size} selected
           </span>
           <button
             onClick={async () => {
@@ -303,7 +312,7 @@ const TransactionTable = ({
           />
       </div>
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
+      <div ref={tableContainerRef} className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]">
         <table className="w-full text-left border-collapse">
           {/* Header */}
           <thead className="sticky top-0 bg-white z-2">
@@ -319,7 +328,7 @@ const TransactionTable = ({
                         if (allSelected) {
                           onClearSelection();
                         } else {
-                          onSelectAll(selectableIds);
+                          onSelectAll(transactions.filter((tx) => !tx.isGroup));
                         }
                       }}
                       className="w-3.5 h-3.5 accent-gray-700 cursor-pointer"
@@ -537,7 +546,7 @@ const TransactionTable = ({
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => onToggleSelect(tx.id)}
+                              onChange={() => onToggleSelect(tx)}
                               className="w-3.5 h-3.5 accent-gray-700 cursor-pointer"
                             />
                           </label>

@@ -25,18 +25,30 @@ export async function PUT(
   }
 
   if (Object.keys(updates).length === 0) {
-    return Response.json({ error: "No valid fields to update" }, { status: 400 });
+    return Response.json(
+      { error: "No valid fields to update" },
+      { status: 400 },
+    );
   }
 
   // Validate specific fields if present
   if (updates.amount !== undefined) {
     if (isNaN(Number(updates.amount))) {
-      return Response.json({ error: "amount must be a valid number" }, { status: 400 });
+      return Response.json(
+        { error: "amount must be a valid number" },
+        { status: 400 },
+      );
     }
     updates.amount = String(updates.amount);
   }
-  if (updates.status !== undefined && !STATUSES.includes(updates.status as typeof STATUSES[number])) {
-    return Response.json({ error: `status must be one of: ${STATUSES.join(", ")}` }, { status: 400 });
+  if (
+    updates.status !== undefined &&
+    !STATUSES.includes(updates.status as (typeof STATUSES)[number])
+  ) {
+    return Response.json(
+      { error: `status must be one of: ${STATUSES.join(", ")}` },
+      { status: 400 },
+    );
   }
 
   const row = await db
@@ -47,7 +59,8 @@ export async function PUT(
     )
     .returning();
 
-  if (!row.length) return Response.json({ error: "Not found" }, { status: 404 });
+  if (!row.length)
+    return Response.json({ error: "Not found" }, { status: 404 });
   return Response.json(row);
 }
 

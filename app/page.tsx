@@ -24,7 +24,7 @@ const Home = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([]));
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([]));
+  const [selectedIds, setSelectedIds] = useState<Map<string, Transaction>>(new Map());
   const [allGroups, setAllGroups] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [allSources, setAllSources] = useState<string[]>([]);
@@ -165,6 +165,9 @@ const Home = () => {
     setPageRows((prev) =>
       prev.map((tx) => (tx.id === id ? { ...tx, ...updates } : tx)),
     );
+    setAllGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+    );
     setChildRows((prev) => {
       const next = { ...prev };
       for (const groupId of Object.keys(next)) {
@@ -238,17 +241,15 @@ const Home = () => {
     ...Object.values(childRows).flat(),
   ];
 
-  const selectedUngroupedIds = [...selectedIds].filter((id) => {
-    const item = pageRows.find((tx) => tx.id === id);
-    return item && !item.isGroup && item.parentId === null;
-  });
+  const selectedUngrouped = [...selectedIds.values()].filter(
+    (tx) => !tx.isGroup && tx.parentId === null,
+  );
 
-  const clearSelected = () => setSelectedIds(new Set());
+  const clearSelected = () => setSelectedIds(new Map());
 
   const handleCreateGroup = async (name: string): Promise<string> => {
-    const children = selectedUngroupedIds.map(
-      (id) => allTransactions.find((tx) => tx.id === id)!,
-    );
+    const children = selectedUngrouped;
+    const childIds = children.map((tx) => tx.id);
     const groupInfo = computeGroupFields(children);
     const groupTx = {
       description: name,
@@ -272,18 +273,15 @@ const Home = () => {
     const createdGroup = await groupRes.json();
     const actualGroupId = createdGroup.id;
 
-    await Promise.all(
-      selectedUngroupedIds.map((id) =>
-        fetch(`/api/transactions/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ parentId: actualGroupId }),
-        }),
-      ),
-    );
+    await fetch("/api/transactions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: childIds, updates: { parentId: actualGroupId } }),
+    });
 
+    setCurrentPage(1);
     await fetchPage({
-      page: currentPage,
+      page: 1,
       search: debouncedSearch,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
@@ -294,23 +292,18 @@ const Home = () => {
   };
 
   const handleAddToGroup = (groupId: string) => {
-    if (selectedUngroupedIds.length === 0) return;
+    if (selectedUngrouped.length === 0) return;
 
-    const addedTransactions = selectedUngroupedIds
-      .map((id) => allTransactions.find((tx) => tx.id === id)!)
-      .filter(Boolean);
+    const addedTransactions = selectedUngrouped;
+    const childIds = addedTransactions.map((tx) => tx.id);
 
     clearSelected();
 
-    Promise.all(
-      selectedUngroupedIds.map((id) =>
-        fetch(`/api/transactions/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ parentId: groupId }),
-        }),
-      ),
-    ).then(() => {
+    fetch("/api/transactions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: childIds, updates: { parentId: groupId } }),
+    }).then(() => {
       if (childRows[groupId]) {
         const updatedChildren = [
           ...childRows[groupId],
@@ -418,7 +411,7 @@ const Home = () => {
     })
       .then((res) => res.json())
       .then((created: Transaction[]) => {
-        setSelectedIds(new Set(created.map((row) => row.id)));
+        setSelectedIds(new Map(created.map((row: Transaction) => [row.id, row])));
         setCurrentPage(1);
         fetchPage({
           page: 1,
@@ -491,14 +484,20 @@ const Home = () => {
             expandedIds={expandedIds}
             onToggleExpand={handleToggleExpand}
             selectedIds={selectedIds}
-            onToggleSelect={(id) =>
+            onToggleSelect={(tx) =>
               setSelectedIds((prev) => {
-                const s = new Set(prev);
-                s.has(id) ? s.delete(id) : s.add(id);
-                return s;
+                const next = new Map(prev);
+                next.has(tx.id) ? next.delete(tx.id) : next.set(tx.id, tx);
+                return next;
               })
             }
-            onSelectAll={(ids) => setSelectedIds(new Set(ids))}
+            onSelectAll={(txs) =>
+              setSelectedIds((prev) => {
+                const next = new Map(prev);
+                for (const tx of txs) next.set(tx.id, tx);
+                return next;
+              })
+            }
             onClearSelection={clearSelected}
             onCreateGroup={handleCreateGroup}
             onAddToGroup={handleAddToGroup}
@@ -508,6 +507,7 @@ const Home = () => {
             allGroups={allGroups}
             allCategories={allCategories}
             allSources={allSources}
+            currentPage={currentPage}
           />
         </div>
         <div>

@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Trash } from "lucide-react";
 import { Transaction, STATUSES } from "@/types/transaction";
 
 interface BulkActionsProps {
-  selectedIds: Set<string>;
+  selectedIds: Map<string, Transaction>;
   onBulkDelete: (ids: string[]) => void;
   onBulkUpdate: (ids: string[], updates: Partial<Transaction>) => void;
   onClearSelection: () => void;
@@ -31,7 +31,7 @@ const BulkActions = ({
   const [hoveredItem, setHoveredItem] = useState<HoveredItem>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const ids = [...selectedIds];
+  const ids = [...selectedIds.keys()];
 
   const categorySuggestions = allCategories;
   const sourceSuggestions = allSources;
