@@ -5,11 +5,15 @@ import { SortConfig, Transaction, PaginatedResponse } from "@/types/transaction"
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
 import Pagination from "@/components/Pagination";
-import { Search, Plus, Upload } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { computeGroupFields } from "@/lib/groupUtils";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import SettingsDrawer from "@/components/SettingsDrawer";
+
+type ColumnFilters = { category: string[]; status: string[]; source: string[] };
+type TextFilters = { description: string; dateFrom: string; dateTo: string; amountMin: string; amountMax: string };
+const EMPTY_TEXT_FILTERS: TextFilters = { description: "", dateFrom: "", dateTo: "", amountMin: "", amountMax: "" };
 
 const Home = () => {
   const [pageRows, setPageRows] = useState<Transaction[]>([]);
@@ -18,8 +22,9 @@ const Home = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [textFilters, setTextFilters] = useState<TextFilters>(EMPTY_TEXT_FILTERS);
+  const [debouncedTextFilters, setDebouncedTextFilters] = useState<TextFilters>(EMPTY_TEXT_FILTERS);
+  const textFiltersRef = useRef<TextFilters>(EMPTY_TEXT_FILTERS);
   const [showAddRow, setShowAddRow] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -29,10 +34,16 @@ const Home = () => {
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [allSources, setAllSources] = useState<string[]>([]);
   const [pinnedGroup, setPinnedGroup] = useState<Transaction | null>(null);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({ category: [], status: [], source: [] });
+  const columnFiltersRef = useRef<ColumnFilters>({ category: [], status: [], source: [] });
 
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
   const prevUserIdRef = useRef<string | null>(null);
+
+  // Keep refs in sync so fetchPage always reads latest values without being recreated
+  useEffect(() => { columnFiltersRef.current = columnFilters; }, [columnFilters]);
+  useEffect(() => { textFiltersRef.current = debouncedTextFilters; }, [debouncedTextFilters]);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -43,7 +54,6 @@ const Home = () => {
   const fetchPage = useCallback(
     async (opts: {
       page: number;
-      search: string;
       sortBy: string | null;
       sortDir: string | null;
     }) => {
@@ -52,11 +62,22 @@ const Home = () => {
 
       const params = new URLSearchParams();
       params.set("page", String(opts.page));
-      if (opts.search) params.set("search", opts.search);
       if (opts.sortBy && opts.sortDir) {
         params.set("sortBy", opts.sortBy);
         params.set("sortDir", opts.sortDir);
       }
+
+      const tf = textFiltersRef.current;
+      if (tf.description) params.set("filterDescription", tf.description);
+      if (tf.dateFrom) params.set("filterDateFrom", tf.dateFrom);
+      if (tf.dateTo) params.set("filterDateTo", tf.dateTo);
+      if (tf.amountMin !== "") params.set("filterAmountMin", tf.amountMin);
+      if (tf.amountMax !== "") params.set("filterAmountMax", tf.amountMax);
+
+      const f = columnFiltersRef.current;
+      if (f.category.length > 0) params.set("filterCategory", f.category.join(","));
+      if (f.status.length > 0) params.set("filterStatus", f.status.join(","));
+      if (f.source.length > 0) params.set("filterSource", f.source.join(","));
 
       try {
         const res = await fetch(`/api/transactions?${params}`);
@@ -83,15 +104,15 @@ const Home = () => {
     setAllSources(data.sources);
   }, [session?.user?.id]);
 
-  // Debounce search — reset to page 1 on new query; clear any pinned group
+  // Debounce text/range filters — reset to page 1 and clear pinned group
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
+      setDebouncedTextFilters(textFilters);
       setCurrentPage(1);
       setPinnedGroup(null);
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [textFilters]);
 
   // Main fetch trigger
   useEffect(() => {
@@ -102,12 +123,21 @@ const Home = () => {
     }
     fetchPage({
       page: currentPage,
-      search: debouncedSearch,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, currentPage, debouncedSearch, sortConfig]);
+  }, [session?.user?.id, currentPage, debouncedTextFilters, sortConfig, columnFilters]);
+
+  const handleTextFilterChange = (col: keyof TextFilters, value: string) => {
+    setTextFilters((prev) => ({ ...prev, [col]: value }));
+  };
+
+  const handleFilterChange = (col: keyof ColumnFilters, values: string[]) => {
+    setColumnFilters((prev) => ({ ...prev, [col]: values }));
+    setCurrentPage(1);
+    setPinnedGroup(null);
+  };
 
   const handleSort = (key: keyof Transaction) => {
     setSortConfig((current) => {
@@ -151,7 +181,6 @@ const Home = () => {
       // If already on page 1, currentPage state won't change so trigger manually
       fetchPage({
         page: 1,
-        search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
       });
@@ -209,7 +238,6 @@ const Home = () => {
       });
       fetchPage({
         page: nextPage,
-        search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
       });
@@ -235,7 +263,6 @@ const Home = () => {
     if (!childRows[id]) {
       const res = await fetch(`/api/transactions?parentId=${id}`);
       const data: Transaction[] = await res.json();
-      console.log(`DEBUG: ${data}`)
       setChildRows((prev) => ({ ...prev, [id]: data }));
     }
   };
@@ -292,12 +319,11 @@ const Home = () => {
     setCurrentPage(1);
     await fetchPage({
       page: 1,
-      search: debouncedSearch,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
     });
     setAllGroups((prev) => [createdGroup, ...prev]);
-    if (debouncedSearch) setPinnedGroup(createdGroup);
+    if (textFiltersRef.current.description) setPinnedGroup(createdGroup);
 
     return actualGroupId;
   };
@@ -326,7 +352,6 @@ const Home = () => {
 
       fetchPage({
         page: currentPage,
-        search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
       });
@@ -363,7 +388,6 @@ const Home = () => {
 
       fetchPage({
         page: currentPage,
-        search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
       });
@@ -379,7 +403,6 @@ const Home = () => {
       clearSelected();
       fetchPage({
         page: currentPage,
-        search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
       });
@@ -398,7 +421,6 @@ const Home = () => {
       clearSelected();
       fetchPage({
         page: currentPage,
-        search: debouncedSearch,
         sortBy: sortConfig?.key ?? null,
         sortDir: sortConfig?.direction ?? null,
       });
@@ -409,7 +431,7 @@ const Home = () => {
     newTransactions: Omit<Transaction, "id" | "createdAt">[],
   ) => {
     const now = Date.now();
-    const sorted = [...newTransactions].sort((a, b) => b.date.localeCompare(a.date))
+    const sorted = [...newTransactions].sort((a, b) => b.date.localeCompare(a.date));
     const withTimestamps = sorted.map((tx, i) => ({
       ...tx,
       createdAt: now - i,
@@ -426,20 +448,19 @@ const Home = () => {
         setCurrentPage(1);
         fetchPage({
           page: 1,
-          search: debouncedSearch,
           sortBy: sortConfig?.key ?? null,
           sortDir: sortConfig?.direction ?? null,
         });
       });
-  }; 
+  };
 
   if (isPending || !session) return null;
 
   return (
-    <main className="h-screen overflow-hidden text-gray-900 dark:text-foreground font-sans">
-      <div className="max-w-5xl mx-auto px-6 py-12">
+    <main className="h-screen flex flex-col overflow-hidden text-gray-900 dark:text-foreground font-sans">
+      <div className="max-w-5xl w-full mx-auto px-6 py-12 flex flex-col flex-1 min-h-0">
         {/* Header Area */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
           {/* Main Logo */}
           <div className="flex items-center gap-2">
             <img
@@ -462,17 +483,6 @@ const Home = () => {
           </div>
           {/* Header Toolbar */}
           <div className="flex items-center">
-            <div className="relative group">
-              <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-gray-600 dark:text-gray-500 dark:group-focus-within:text-gray-400 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-6 pr-2 py-1 w-48 text-[13px] bg-transparent border-0 border-b border-gray-400 focus:border-gray-600 dark:border-gray-500 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors placeholder-gray-400 dark:placeholder-gray-500"
-              />
-            </div>
-
             <button
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-gray-900 hover:bg-gray-50 dark:text-foreground dark:hover:bg-[#424242] rounded transition-colors"
               onClick={() => setIsImportModalOpen(true)}
@@ -495,7 +505,7 @@ const Home = () => {
 
         {/* Main Table */}
         <div
-          className={`mt-4 transition-opacity ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
+          className={`mt-4 flex-1 min-h-0 flex flex-col transition-opacity ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
         >
           <TransactionTable
             transactions={displayRows}
@@ -534,9 +544,13 @@ const Home = () => {
             allCategories={allCategories}
             allSources={allSources}
             currentPage={currentPage}
+            columnFilters={columnFilters}
+            onFilterChange={handleFilterChange}
+            textFilters={textFilters}
+            onTextFilterChange={handleTextFilterChange}
           />
         </div>
-        <div>
+        <div className="shrink-0">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

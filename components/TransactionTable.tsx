@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
+  ListFilter,
   Trash,
   Unlink,
   X,
@@ -42,6 +43,22 @@ interface TransactionTableProps {
   allCategories: string[];
   allSources: string[];
   currentPage: number;
+  columnFilters: { category: string[]; status: string[]; source: string[] };
+  onFilterChange: (
+    col: "category" | "status" | "source",
+    values: string[],
+  ) => void;
+  textFilters: {
+    description: string;
+    dateFrom: string;
+    dateTo: string;
+    amountMin: string;
+    amountMax: string;
+  };
+  onTextFilterChange: (
+    col: "description" | "dateFrom" | "dateTo" | "amountMin" | "amountMax",
+    value: string,
+  ) => void;
 }
 
 const localToday = () => {
@@ -84,6 +101,10 @@ const TransactionTable = ({
   allCategories,
   allSources,
   currentPage,
+  columnFilters,
+  onFilterChange,
+  textFilters,
+  onTextFilterChange,
 }: TransactionTableProps) => {
   const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>({
     date: localToday(),
@@ -103,24 +124,241 @@ const TransactionTable = ({
   const [editValue, setEditValue] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [openFilterCol, setOpenFilterCol] = useState<
+    "date" | "description" | "amount" | "category" | "status" | "source" | null
+  >(null);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     tableContainerRef.current?.scrollTo(0, 0);
   }, [currentPage]);
 
-  const allSuggestions = useMemo(() => {
-    const used = allTransactions
-      .map((t) => t.category)
-      .filter(Boolean) as string[];
-    return Array.from(new Set(used));
-  }, [allTransactions]);
+  useEffect(() => {
+    if (!openFilterCol) return;
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setOpenFilterCol(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openFilterCol]);
 
-  const allSourceSuggestions = useMemo(() => {
-    const used = allTransactions
-      .map((t) => t.source)
-      .filter(Boolean) as string[];
-    return Array.from(new Set(used));
-  }, [allTransactions]);
+  const dropdownBase =
+    "absolute top-full left-0 mt-0.5 bg-white dark:bg-[#1b1b1b] border border-gray-200 dark:border-gray-700 rounded shadow-lg z-50 py-1 font-normal normal-case tracking-normal text-left select-auto";
+
+  const renderFilterDropdown = (
+    col: "category" | "status" | "source",
+    options: string[],
+    showNone = false,
+  ) => {
+    const active = columnFilters[col];
+    return (
+      <div
+        ref={filterRef}
+        className={`${dropdownBase} min-w-44`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="px-3 py-1.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            Filter
+          </span>
+          {active.length > 0 && (
+            <button
+              onClick={() => onFilterChange(col, [])}
+              className="text-[11px] text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="max-h-52 overflow-y-auto">
+          {options.map((opt) => (
+            <label
+              key={opt}
+              className="flex items-center gap-2 px-3 py-1.5 text-[12px] cursor-pointer hover:bg-gray-50 dark:hover:bg-[#282828] text-gray-900 dark:text-foreground"
+            >
+              <input
+                type="checkbox"
+                checked={active.includes(opt)}
+                onChange={() => {
+                  const next = active.includes(opt)
+                    ? active.filter((v) => v !== opt)
+                    : [...active, opt];
+                  onFilterChange(col, next);
+                }}
+                className="w-3 h-3 accent-gray-700 dark:accent-gray-300 cursor-pointer"
+              />
+              {opt}
+            </label>
+          ))}
+          {showNone && (
+            <label className="flex items-center gap-2 px-3 py-1.5 text-[12px] cursor-pointer hover:bg-gray-50 dark:hover:bg-[#282828] text-gray-400 dark:text-gray-500">
+              <input
+                type="checkbox"
+                checked={active.includes("__none__")}
+                onChange={() => {
+                  const next = active.includes("__none__")
+                    ? active.filter((v) => v !== "__none__")
+                    : [...active, "__none__"];
+                  onFilterChange(col, next);
+                }}
+                className="w-3 h-3 accent-gray-700 dark:accent-gray-300 cursor-pointer"
+              />
+              (None)
+            </label>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const dropdownInputClass =
+    "w-full bg-transparent border-b border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500 outline-none text-[12px] text-gray-900 dark:text-foreground py-1 px-0 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-0";
+
+  const renderDescriptionDropdown = () => {
+    const active = textFilters.description !== "";
+    return (
+      <div
+        ref={filterRef}
+        className={`${dropdownBase} w-full`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="px-3 py-1.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            Filter
+          </span>
+          {active && (
+            <button
+              onClick={() => onTextFilterChange("description", "")}
+              className="text-[11px] text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="px-3 py-2">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Search description..."
+            value={textFilters.description}
+            onChange={(e) => onTextFilterChange("description", e.target.value)}
+            className={dropdownInputClass}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderDateRangeDropdown = () => {
+    const active = textFilters.dateFrom !== "" || textFilters.dateTo !== "";
+    return (
+      <div
+        ref={filterRef}
+        className={`${dropdownBase} w-52`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="px-3 py-1.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            Filter
+          </span>
+          {active && (
+            <button
+              onClick={() => {
+                onTextFilterChange("dateFrom", "");
+                onTextFilterChange("dateTo", "");
+              }}
+              className="text-[11px] text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="px-3 py-2 flex flex-col gap-2">
+          <div>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider">
+              From
+            </p>
+            <input
+              type="date"
+              value={textFilters.dateFrom}
+              onChange={(e) => onTextFilterChange("dateFrom", e.target.value)}
+              className={dropdownInputClass}
+            />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider">
+              To
+            </p>
+            <input
+              type="date"
+              value={textFilters.dateTo}
+              onChange={(e) => onTextFilterChange("dateTo", e.target.value)}
+              className={dropdownInputClass}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAmountRangeDropdown = () => {
+    const active = textFilters.amountMin !== "" || textFilters.amountMax !== "";
+    return (
+      <div
+        ref={filterRef}
+        className={`${dropdownBase} w-44`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="px-3 py-1.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            Filter
+          </span>
+          {active && (
+            <button
+              onClick={() => {
+                onTextFilterChange("amountMin", "");
+                onTextFilterChange("amountMax", "");
+              }}
+              className="text-[11px] text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="px-3 py-2 flex flex-col gap-2">
+          <div>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider">
+              Min
+            </p>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="e.g. -100"
+              value={textFilters.amountMin}
+              onChange={(e) => onTextFilterChange("amountMin", e.target.value)}
+              className={dropdownInputClass}
+            />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider">
+              Max
+            </p>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="e.g. 500"
+              value={textFilters.amountMax}
+              onChange={(e) => onTextFilterChange("amountMax", e.target.value)}
+              className={dropdownInputClass}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   const selectableIds = useMemo(
     () => transactions.filter((tx) => !tx.isGroup).map((tx) => tx.id),
@@ -288,9 +526,9 @@ const TransactionTable = ({
   const editInputClass = `w-full bg-transparent border-0 outline-none text-[13px] text-gray-900 dark:text-foreground p-0 m-0 focus:ring-0 caret-gray-400 dark:caret-gray-500`;
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col">
       {/* Toolbar — always reserves space to prevent table shift */}
-      <div className="flex items-center gap-1 mb-3 flex-wrap h-8">
+      <div className="flex items-center gap-1 mb-3 flex-wrap h-8 shrink-0">
         <span className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums w-18 shrink-0">
           {selectedIds.size} selected
         </span>
@@ -328,7 +566,7 @@ const TransactionTable = ({
 
       <div
         ref={tableContainerRef}
-        className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-16rem)]"
+        className="overflow-x-auto overflow-y-auto flex-1 min-h-0"
       >
         <table className="w-full text-left border-collapse">
           {/* Header */}
@@ -357,41 +595,140 @@ const TransactionTable = ({
                   </label>
                 )}
               </th>
-              <th
-                className={`${thClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-[#424242] w-32`}
-                onClick={() => onSort("date")}
-              >
-                Date {renderSortIcon("date")}
+              <th className={`${thClass} relative w-32`}>
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
+                    onClick={() => onSort("date")}
+                  >
+                    Date {renderSortIcon("date")}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFilterCol(
+                        openFilterCol === "date" ? null : "date",
+                      );
+                    }}
+                    className={`p-0.5 rounded transition-colors ${textFilters.dateFrom || textFilters.dateTo ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                  >
+                    <ListFilter className="w-3 h-3" />
+                  </button>
+                </div>
+                {openFilterCol === "date" && renderDateRangeDropdown()}
               </th>
-              <th
-                className={`${thClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-[#424242] min-w-50`}
-                onClick={() => onSort("description")}
-              >
-                Description {renderSortIcon("description")}
+              <th className={`${thClass} relative min-w-50`}>
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
+                    onClick={() => onSort("description")}
+                  >
+                    Description {renderSortIcon("description")}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFilterCol(
+                        openFilterCol === "description" ? null : "description",
+                      );
+                    }}
+                    className={`p-0.5 rounded transition-colors ${textFilters.description ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                  >
+                    <ListFilter className="w-3 h-3" />
+                  </button>
+                </div>
+                {openFilterCol === "description" && renderDescriptionDropdown()}
               </th>
-              <th
-                className={`${thClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-[#424242] w-40`}
-                onClick={() => onSort("category")}
-              >
-                Category {renderSortIcon("category")}
+              <th className={`${thClass} relative w-40`}>
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
+                    onClick={() => onSort("category")}
+                  >
+                    Category {renderSortIcon("category")}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFilterCol(
+                        openFilterCol === "category" ? null : "category",
+                      );
+                    }}
+                    className={`p-0.5 rounded transition-colors ${columnFilters.category.length > 0 ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                  >
+                    <ListFilter className="w-3 h-3" />
+                  </button>
+                </div>
+                {openFilterCol === "category" &&
+                  renderFilterDropdown("category", allCategories, true)}
               </th>
-              <th
-                className={`${thClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-[#424242] text-right w-32`}
-                onClick={() => onSort("amount")}
-              >
-                Amount {renderSortIcon("amount")}
+              <th className={`${thClass} relative w-32`}>
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
+                    onClick={() => onSort("amount")}
+                  >
+                    Amount {renderSortIcon("amount")}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFilterCol(
+                        openFilterCol === "amount" ? null : "amount",
+                      );
+                    }}
+                    className={`p-0.5 rounded transition-colors ${textFilters.amountMin || textFilters.amountMax ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                  >
+                    <ListFilter className="w-3 h-3" />
+                  </button>
+                </div>
+                {openFilterCol === "amount" && renderAmountRangeDropdown()}
               </th>
-              <th
-                className={`${thClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-[#424242] w-32`}
-                onClick={() => onSort("status")}
-              >
-                Status {renderSortIcon("status")}
+              <th className={`${thClass} relative w-32`}>
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
+                    onClick={() => onSort("status")}
+                  >
+                    Status {renderSortIcon("status")}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFilterCol(
+                        openFilterCol === "status" ? null : "status",
+                      );
+                    }}
+                    className={`p-0.5 rounded transition-colors ${columnFilters.status.length > 0 ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                  >
+                    <ListFilter className="w-3 h-3" />
+                  </button>
+                </div>
+                {openFilterCol === "status" &&
+                  renderFilterDropdown("status", STATUSES)}
               </th>
-              <th
-                className={`${thClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-[#424242] w-40`}
-                onClick={() => onSort("source")}
-              >
-                Source {renderSortIcon("source")}
+              <th className={`${thClass} relative w-40`}>
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
+                    onClick={() => onSort("source")}
+                  >
+                    Source {renderSortIcon("source")}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFilterCol(
+                        openFilterCol === "source" ? null : "source",
+                      );
+                    }}
+                    className={`p-0.5 rounded transition-colors ${columnFilters.source.length > 0 ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                  >
+                    <ListFilter className="w-3 h-3" />
+                  </button>
+                </div>
+                {openFilterCol === "source" &&
+                  renderFilterDropdown("source", allSources, true)}
               </th>
               <th className={`${thClass} w-16`} />
             </tr>
@@ -441,7 +778,7 @@ const TransactionTable = ({
                         category: val.trim() || null,
                       })
                     }
-                    suggestions={allSuggestions}
+                    suggestions={allCategories}
                     placeholder="Category..."
                     positionerZIndex={50}
                   />
@@ -491,7 +828,7 @@ const TransactionTable = ({
                         source: val.trim() || null,
                       })
                     }
-                    suggestions={allSourceSuggestions}
+                    suggestions={allSources}
                     placeholder="Source..."
                     positionerZIndex={50}
                   />
@@ -677,7 +1014,7 @@ const TransactionTable = ({
                               setEditingCell(null);
                               setEditValue("");
                             }}
-                            suggestions={allSuggestions}
+                            suggestions={allCategories}
                             positionerZIndex={50}
                           />
                         ) : (
@@ -777,7 +1114,7 @@ const TransactionTable = ({
                               setEditingCell(null);
                               setEditValue("");
                             }}
-                            suggestions={allSourceSuggestions}
+                            suggestions={allSources}
                             positionerZIndex={50}
                           />
                         ) : (
@@ -925,7 +1262,7 @@ const TransactionTable = ({
                                   setEditingCell(null);
                                   setEditValue("");
                                 }}
-                                suggestions={allSuggestions}
+                                suggestions={allCategories}
                                 positionerZIndex={50}
                               />
                             ) : (
@@ -1038,7 +1375,7 @@ const TransactionTable = ({
                                   setEditingCell(null);
                                   setEditValue("");
                                 }}
-                                suggestions={allSourceSuggestions}
+                                suggestions={allSources}
                                 positionerZIndex={50}
                               />
                             ) : (

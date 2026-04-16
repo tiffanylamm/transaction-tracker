@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { transactions } from "@/lib/db/schema";
-import { eq, desc, asc, and, isNull, ilike, or, count, inArray, SQL } from "drizzle-orm";
+import { eq, desc, asc, and, isNull, ilike, or, count, inArray, gte, lte, SQL } from "drizzle-orm";
 import { STATUSES, UPDATABLE_FIELDS } from "@/types/transaction";
 
 const SORTABLE_COLUMNS = {
@@ -72,22 +72,48 @@ export async function GET(request: Request) {
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
   const limit = 50;
   const offset = (page - 1) * limit;
-  const search = url.searchParams.get("search")?.trim() ?? "";
   const sortBy = url.searchParams.get("sortBy");
   const sortDir = url.searchParams.get("sortDir");
+  const filterDescription = url.searchParams.get("filterDescription")?.trim() ?? "";
+  const filterDateFrom = url.searchParams.get("filterDateFrom")?.trim() ?? "";
+  const filterDateTo = url.searchParams.get("filterDateTo")?.trim() ?? "";
+  const filterAmountMin = url.searchParams.get("filterAmountMin")?.trim() ?? "";
+  const filterAmountMax = url.searchParams.get("filterAmountMax")?.trim() ?? "";
+  const filterCategory = (url.searchParams.get("filterCategory") ?? "").split(",").filter(Boolean);
+  const filterStatus = (url.searchParams.get("filterStatus") ?? "").split(",").filter(Boolean);
+  const filterSource = (url.searchParams.get("filterSource") ?? "").split(",").filter(Boolean);
 
   const conditions: SQL[] = [
     eq(transactions.userId, session.user.id),
     isNull(transactions.parentId),
   ];
 
-  if (search) {
-    conditions.push(
-      or(
-        ilike(transactions.description, `%${search}%`),
-        ilike(transactions.category, `%${search}%`),
-      ) as SQL,
-    );
+  if (filterDescription) {
+    conditions.push(ilike(transactions.description, `%${filterDescription}%`) as SQL);
+  }
+  if (filterDateFrom) conditions.push(gte(transactions.date, filterDateFrom) as SQL);
+  if (filterDateTo) conditions.push(lte(transactions.date, filterDateTo) as SQL);
+  if (filterAmountMin !== "") conditions.push(gte(transactions.amount, filterAmountMin) as SQL);
+  if (filterAmountMax !== "") conditions.push(lte(transactions.amount, filterAmountMax) as SQL);
+
+  if (filterCategory.length > 0) {
+    const real = filterCategory.filter((v) => v !== "__none__");
+    const none = filterCategory.includes("__none__");
+    if (real.length && none) conditions.push(or(inArray(transactions.category, real), isNull(transactions.category)) as SQL);
+    else if (real.length) conditions.push(inArray(transactions.category, real) as SQL);
+    else conditions.push(isNull(transactions.category) as SQL);
+  }
+
+  if (filterStatus.length > 0) {
+    conditions.push(inArray(transactions.status, filterStatus) as SQL);
+  }
+
+  if (filterSource.length > 0) {
+    const real = filterSource.filter((v) => v !== "__none__");
+    const none = filterSource.includes("__none__");
+    if (real.length && none) conditions.push(or(inArray(transactions.source, real), isNull(transactions.source)) as SQL);
+    else if (real.length) conditions.push(inArray(transactions.source, real) as SQL);
+    else conditions.push(isNull(transactions.source) as SQL);
   }
 
   const whereClause = and(...conditions);
