@@ -39,14 +39,14 @@ export default function SignUpPage() {
       title="Create your account"
       extraFields={
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-[#e3e3e3] font-medium">Name</label>
+          <label className="text-[15px] text-[#e3e3e3] font-medium">Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
             placeholder="John Doe"
-            className="w-full px-3 py-1 text-[11px] text-[#e3e3e3] bg-neutral-900 border border-gray-500 rounded-md placeholder-gray-500 focus:outline-none focus:border-[#e3e3e3] transition-colors"
+            className="w-full px-3 py-1 text-[15px] text-[#e3e3e3] bg-neutral-900 border border-gray-500 rounded-md placeholder-gray-500 focus:outline-none focus:border-[#e3e3e3] transition-colors"
           />
         </div>
       }
@@ -61,7 +61,7 @@ export default function SignUpPage() {
       onSubmit={handleSubmit}
       footer={
         <>
-          <p className="text-[10px] text-[#e3e3e3]">
+          <p className="text-[15px] text-[#e3e3e3]">
             By creating an account you agree to the{" "}
             <a href="" className="underline">
               Terms of Service
@@ -72,7 +72,7 @@ export default function SignUpPage() {
             </a>
             .
           </p>
-          <p className="text-[14px] text-[#e3e3e3]">
+          <p className="text-[18px] text-[#e3e3e3]">
             Already have an account?{" "}
             <a href="/sign-in" className="text-blue-400">
               Login

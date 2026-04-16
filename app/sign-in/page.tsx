@@ -46,7 +46,7 @@ export default function SignInPage() {
       loading={loading}
       onSubmit={handleSubmit}
       footer={
-        <p className="text-[14px] text-[#e3e3e3]">
+        <p className="text-[18px] text-[#e3e3e3]">
           New to ShowMeTheMoney?{" "}
           <a href="/sign-up" className="text-blue-400">
             Sign up
