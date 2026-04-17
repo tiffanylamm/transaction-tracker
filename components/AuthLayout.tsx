@@ -109,17 +109,9 @@ export default function AuthLayout({
   );
 }
 
-function Divider({
-  label,
-  className,
-}: {
-  label: string;
-  className?: string;
-}) {
+function Divider({ label }: { label: string }) {
   return (
-    <div
-      className={`flex items-center gap-1.5 text-gray-400 text-[15px] ${className ?? ""}`}
-    >
+    <div className="flex items-center gap-1.5 text-gray-400 text-[15px]">
       <div className="h-px w-full bg-gray-400" />
       <p className="text-nowrap">{label}</p>
       <div className="h-px w-full bg-gray-400" />
