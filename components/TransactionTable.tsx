@@ -631,7 +631,7 @@ const TransactionTable = ({
                 </div>
                 {openFilterCol === "date" && renderDateRangeDropdown()}
               </th>
-              <th className={`${thClass} relative min-w-50`}>
+              <th className={`${thClass} relative min-w-50 max-w-64`}>
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
@@ -987,7 +987,7 @@ const TransactionTable = ({
 
                       {/* Description */}
                       <td
-                        className={`h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium`}
+                        className={`h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium max-w-64`}
                         onClick={() =>
                           !isEditing(tx.id, "description") &&
                           startEditing(
@@ -1009,8 +1009,8 @@ const TransactionTable = ({
                             className={`${editInputClass} font-medium`}
                           />
                         ) : (
-                          <span className="flex items-center gap-1.5 py-px">
-                            <span className="uppercase">{tx.description}</span>
+                          <span className="flex items-center gap-1.5 py-px min-w-0">
+                            <span className="uppercase truncate">{tx.description}</span>
                             {tx.isGroup && tx.childCount !== undefined && (
                               <span className="text-gray-400 dark:text-gray-500 text-[11px] font-normal">
                                 · {tx.childCount}{" "}
@@ -1235,7 +1235,7 @@ const TransactionTable = ({
 
                           {/* Description */}
                           <td
-                            className={`${tdClass} dark:text-foreground`}
+                            className={`${tdClass} dark:text-foreground max-w-64`}
                             onClick={() =>
                               !isEditing(child.id, "description") &&
                               startEditing(
@@ -1260,8 +1260,8 @@ const TransactionTable = ({
                                   className={`${editInputClass}`}
                                 />
                               ) : (
-                                <span className="cursor-text block py-px">
-                                  <span className="uppercase">
+                                <span className="cursor-text block py-px min-w-0">
+                                  <span className="uppercase truncate block">
                                     {child.description}
                                   </span>
                                 </span>
