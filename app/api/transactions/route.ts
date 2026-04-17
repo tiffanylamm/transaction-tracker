@@ -93,8 +93,8 @@ export async function GET(request: Request) {
   }
   if (filterDateFrom) conditions.push(gte(transactions.date, filterDateFrom) as SQL);
   if (filterDateTo) conditions.push(lte(transactions.date, filterDateTo) as SQL);
-  if (filterAmountMin !== "") conditions.push(gte(transactions.amount, filterAmountMin) as SQL);
-  if (filterAmountMax !== "") conditions.push(lte(transactions.amount, filterAmountMax) as SQL);
+  if (filterAmountMin !== "") conditions.push(gte(transactions.amount, String(parseFloat(filterAmountMin))) as SQL);
+  if (filterAmountMax !== "") conditions.push(lte(transactions.amount, String(parseFloat(filterAmountMax))) as SQL);
 
   if (filterCategory.length > 0) {
     const real = filterCategory.filter((v) => v !== "__none__");

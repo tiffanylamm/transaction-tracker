@@ -33,7 +33,7 @@ const Home = () => {
   const [allGroups, setAllGroups] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [allSources, setAllSources] = useState<string[]>([]);
-  const [pinnedGroup, setPinnedGroup] = useState<Transaction | null>(null);
+  const [pinnedRow, setPinnedRow] = useState<Transaction | null>(null);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({ category: [], status: [], source: [] });
   const columnFiltersRef = useRef<ColumnFilters>({ category: [], status: [], source: [] });
 
@@ -104,12 +104,19 @@ const Home = () => {
     setAllSources(data.sources);
   }, [session?.user?.id]);
 
-  // Debounce text/range filters — reset to page 1 and clear pinned group
+  const anyFilterActive = () => {
+    const tf = textFiltersRef.current;
+    const cf = columnFiltersRef.current;
+    return !!(tf.description || tf.dateFrom || tf.dateTo || tf.amountMin || tf.amountMax ||
+      cf.category.length > 0 || cf.status.length > 0 || cf.source.length > 0);
+  };
+
+  // Debounce text/range filters — reset to page 1 and clear pinned row
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedTextFilters(textFilters);
       setCurrentPage(1);
-      setPinnedGroup(null);
+      setPinnedRow(null);
     }, 400);
     return () => clearTimeout(timer);
   }, [textFilters]);
@@ -136,7 +143,7 @@ const Home = () => {
   const handleFilterChange = (col: keyof ColumnFilters, values: string[]) => {
     setColumnFilters((prev) => ({ ...prev, [col]: values }));
     setCurrentPage(1);
-    setPinnedGroup(null);
+    setPinnedRow(null);
   };
 
   const handleSort = (key: keyof Transaction) => {
@@ -177,6 +184,7 @@ const Home = () => {
       body: JSON.stringify(transaction),
     }).then(() => {
       addMetadata(newTransaction);
+      setPinnedRow(transaction);
       setCurrentPage(1);
       // If already on page 1, currentPage state won't change so trigger manually
       fetchPage({
@@ -208,7 +216,7 @@ const Home = () => {
       }
       return next;
     });
-    setPinnedGroup((prev) => (prev?.id === id ? { ...prev, ...updates } : prev));
+    setPinnedRow((prev) => (prev?.id === id ? { ...prev, ...updates } : prev));
 
     fetch(`/api/transactions/${id}`, {
       method: "PUT",
@@ -228,7 +236,7 @@ const Home = () => {
       if (allGroups.some((g) => g.id === id)) {
         setAllGroups((prev) => prev.filter((g) => g.id !== id));
       }
-      if (pinnedGroup?.id === id) setPinnedGroup(null);
+      if (pinnedRow?.id === id) setPinnedRow(null);
       const isLastOnPage = pageRows.length === 1 && currentPage > 1;
       const nextPage = isLastOnPage ? currentPage - 1 : currentPage;
       setChildRows((prev) => {
@@ -268,10 +276,10 @@ const Home = () => {
   };
 
   const displayRows = useMemo(() => {
-    if (!pinnedGroup || pageRows.some((r) => r.id === pinnedGroup.id))
+    if (!pinnedRow || pageRows.some((r) => r.id === pinnedRow.id))
       return pageRows;
-    return [pinnedGroup, ...pageRows];
-  }, [pinnedGroup, pageRows]);
+    return [pinnedRow, ...pageRows];
+  }, [pinnedRow, pageRows]);
 
   const allTransactions = [
     ...displayRows,
@@ -323,7 +331,7 @@ const Home = () => {
       sortDir: sortConfig?.direction ?? null,
     });
     setAllGroups((prev) => [createdGroup, ...prev]);
-    if (textFiltersRef.current.description) setPinnedGroup(createdGroup);
+    if (anyFilterActive()) setPinnedRow(createdGroup);
 
     return actualGroupId;
   };
