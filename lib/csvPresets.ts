@@ -92,8 +92,14 @@ const paypalDebit: CSVPreset = {
   mapRow: (row, headers) => {
     const h = headers.map((s) => s.toLowerCase());
     const type = row[h.indexOf("type")] ?? "";
+    const status = row[h.indexOf("status")] ?? "";
+    const validType = [
+      "General Authorization",
+      "General PayPal Debit Card Transaction",
+      "Payment Refund",
+    ];
 
-    if (type !== "General PayPal Debit Card Transaction") return [];
+    if (!validType.includes(type) || status != "Completed") return [];
 
     const dateStr = row[h.indexOf("date")] ?? "";
     const description = row[h.indexOf("name")] ?? "";
