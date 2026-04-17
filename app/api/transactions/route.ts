@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 
   // Paginated top-level branch
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
-  const limit = 50;
+  const limit = 100;
   const offset = (page - 1) * limit;
   const sortBy = url.searchParams.get("sortBy");
   const sortDir = url.searchParams.get("sortDir");
