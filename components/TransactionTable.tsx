@@ -18,7 +18,6 @@ import { Transaction, SortConfig, Status, STATUSES } from "@/types/transaction";
 import StatusBadge from "./StatusBadge";
 import InputAutocomplete from "./InputAutocomplete";
 import BulkActions from "./BulkActions";
-import { computeGroupFields } from "@/lib/groupUtils";
 
 function DriveFileCell({
   fileId,
@@ -99,7 +98,7 @@ interface TransactionTableProps {
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Transaction>) => void;
   showAddRow: boolean;
-  onAdd: (transaction: Omit<Transaction, "id" | "createdAt">) => void;
+  onAdd: (transaction: Omit<Transaction, "id" | "createdAt">) => Promise<void>;
   onCancelAdd: () => void;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
@@ -134,6 +133,7 @@ interface TransactionTableProps {
   ) => void;
   totalAmount: number;
   showTotalsRow: boolean;
+  scrollToTopRef?: React.RefObject<(() => void) | null>;
 }
 
 const localToday = () => {
@@ -196,8 +196,9 @@ const TransactionTable = ({
   onTextFilterChange,
   totalAmount,
   showTotalsRow,
+  scrollToTopRef,
 }: TransactionTableProps) => {
-  const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>({
+  const emptyNewTransaction: Partial<Transaction> = {
     date: localToday(),
     description: "",
     category: null,
@@ -207,7 +208,9 @@ const TransactionTable = ({
     isGroup: false,
     parentId: null,
     driveFileId: null,
-  });
+  };
+  const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>(emptyNewTransaction);
+  const [showAddErrors, setShowAddErrors] = useState(false);
 
   const attachingTxIdRef = useRef<{
     id: string;
@@ -276,6 +279,13 @@ const TransactionTable = ({
   const [editValue, setEditValue] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollToTopRef) {
+      scrollToTopRef.current = () =>
+        tableContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [scrollToTopRef]);
   const [openFilterCol, setOpenFilterCol] = useState<
     "date" | "description" | "amount" | "category" | "status" | "source" | null
   >(null);
@@ -529,11 +539,6 @@ const TransactionTable = ({
     [selectedIds],
   );
 
-  const existingGroups = useMemo(
-    () => transactions.filter((tx) => tx.isGroup),
-    [transactions],
-  );
-
   useEffect(() => {
     if (pendingFocusIdRef.current) {
       const id = pendingFocusIdRef.current;
@@ -603,15 +608,17 @@ const TransactionTable = ({
     }
   };
 
-  const handleSaveNew = () => {
+  const handleSaveNew = async () => {
     if (
       !newTransaction.date ||
       !newTransaction.description ||
       newTransaction.amount === undefined ||
       newTransaction.category === undefined
-    )
+    ) {
+      setShowAddErrors(true);
       return;
-    onAdd({
+    }
+    await onAdd({
       date: newTransaction.date,
       description: newTransaction.description,
       category: newTransaction.category,
@@ -622,17 +629,8 @@ const TransactionTable = ({
       parentId: null,
       driveFileId: null,
     });
-    setNewTransaction({
-      date: localToday(),
-      description: "",
-      category: null,
-      amount: 0,
-      status: "Completed",
-      source: null,
-      isGroup: false,
-      parentId: null,
-      driveFileId: null,
-    });
+    setShowAddErrors(false);
+    setNewTransaction(emptyNewTransaction);
   };
 
   const formatDate = (dateString: string) => {
@@ -940,7 +938,7 @@ const TransactionTable = ({
                   <input
                     type="date"
                     value={newTransaction.date}
-                    className={addInputClass}
+                    className={`${addInputClass} ${showAddErrors && !newTransaction.date ? "border-rose-400! dark:border-rose-500!" : ""}`}
                     onChange={(e) =>
                       setNewTransaction({
                         ...newTransaction,
@@ -956,7 +954,7 @@ const TransactionTable = ({
                     type="text"
                     placeholder="Description..."
                     value={newTransaction.description}
-                    className={addInputClass}
+                    className={`${addInputClass} ${showAddErrors && !newTransaction.description ? "border-rose-400! dark:border-rose-500!" : ""}`}
                     onChange={(e) =>
                       setNewTransaction({
                         ...newTransaction,
@@ -987,7 +985,7 @@ const TransactionTable = ({
                     placeholder="0.00"
                     step="0.01"
                     value={newTransaction.amount || ""}
-                    className={`${addInputClass} text-right`}
+                    className={`${addInputClass} text-right ${showAddErrors && newTransaction.amount === undefined ? "border-rose-400! dark:border-rose-500!" : ""}`}
                     onChange={(e) =>
                       setNewTransaction({
                         ...newTransaction,
@@ -1039,14 +1037,11 @@ const TransactionTable = ({
                       onClick={handleSaveNew}
                       aria-label="Save Transaction"
                       className="p-1 text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400 transition-colors"
-                      disabled={
-                        !newTransaction.description || !newTransaction.date
-                      }
                     >
                       <Check className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={onCancelAdd}
+                      onClick={() => { setShowAddErrors(false); setNewTransaction(emptyNewTransaction); onCancelAdd(); }}
                       aria-label="Cancel"
                       className="p-1 text-gray-400 hover:text-rose-600 dark:text-gray-500 dark:hover:text-rose-400 transition-colors"
                     >
@@ -1073,10 +1068,6 @@ const TransactionTable = ({
                 const children = tx.isGroup
                   ? allTransactions.filter((c) => c.parentId === tx.id)
                   : [];
-                const display =
-                  tx.isGroup && children.length > 0
-                    ? { ...tx, ...computeGroupFields(children) }
-                    : tx;
                 const isSelected = selectedIds.has(tx.id) && !tx.isGroup;
 
                 return (
@@ -1122,7 +1113,7 @@ const TransactionTable = ({
                         className={`${tdClass}`}
                         onClick={() =>
                           !isEditing(tx.id, "date") &&
-                          startEditing(tx.id, "date", display.date, tx.isGroup)
+                          startEditing(tx.id, "date", tx.date, tx.isGroup)
                         }
                       >
                         {isEditing(tx.id, "date") ? (
@@ -1143,7 +1134,7 @@ const TransactionTable = ({
                           />
                         ) : (
                           <span className="block py-px">
-                            {formatDate(display.date)}
+                            {formatDate(tx.date)}
                           </span>
                         )}
                       </td>
@@ -1233,7 +1224,7 @@ const TransactionTable = ({
                           startEditing(
                             tx.id,
                             "amount",
-                            display.amount,
+                            tx.amount,
                             tx.isGroup,
                           )
                         }
@@ -1251,7 +1242,7 @@ const TransactionTable = ({
                           />
                         ) : (
                           <span className="block py-px">
-                            {formatAmount(display.amount)}
+                            {formatAmount(tx.amount)}
                           </span>
                         )}
                       </td>
@@ -1284,7 +1275,7 @@ const TransactionTable = ({
                             ))}
                           </select>
                         ) : (
-                          <StatusBadge status={display.status} />
+                          <StatusBadge status={tx.status} />
                         )}
                       </td>
 
@@ -1296,7 +1287,7 @@ const TransactionTable = ({
                           startEditing(
                             tx.id,
                             "source",
-                            display.source ?? "",
+                            tx.source ?? "",
                             tx.isGroup,
                           )
                         }
@@ -1320,7 +1311,7 @@ const TransactionTable = ({
                           />
                         ) : (
                           <span className="block py-px">
-                            {display.source ?? ""}
+                            {tx.source ?? ""}
                           </span>
                         )}
                       </td>

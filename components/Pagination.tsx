@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
-  total: number;
   isLoading: boolean;
   onPageChange: (page: number) => void;
 }
@@ -14,7 +13,6 @@ interface PaginationProps {
 export default function Pagination({
   currentPage,
   totalPages,
-  total,
   isLoading,
   onPageChange,
 }: PaginationProps) {
@@ -23,8 +21,6 @@ export default function Pagination({
   useEffect(() => {
     setInputValue(String(currentPage));
   }, [currentPage]);
-
-  if (totalPages <= 1 && total === 0) return null;
 
   const commit = () => {
     const parsed = parseInt(inputValue);

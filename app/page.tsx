@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { SortConfig, Transaction, PaginatedResponse } from "@/types/transaction";
+import {
+  SortConfig,
+  Transaction,
+  PaginatedResponse,
+} from "@/types/transaction";
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
 import Pagination from "@/components/Pagination";
@@ -12,15 +16,26 @@ import { authClient } from "@/lib/auth-client";
 import SettingsDrawer from "@/components/SettingsDrawer";
 
 type ColumnFilters = { category: string[]; status: string[]; source: string[] };
-type TextFilters = { description: string; dateFrom: string; dateTo: string; amountMin: string; amountMax: string };
-const EMPTY_TEXT_FILTERS: TextFilters = { description: "", dateFrom: "", dateTo: "", amountMin: "", amountMax: "" };
+type TextFilters = {
+  description: string;
+  dateFrom: string;
+  dateTo: string;
+  amountMin: string;
+  amountMax: string;
+};
+const EMPTY_TEXT_FILTERS: TextFilters = {
+  description: "",
+  dateFrom: "",
+  dateTo: "",
+  amountMin: "",
+  amountMax: "",
+};
 
 const Home = () => {
   const [pageRows, setPageRows] = useState<Transaction[]>([]);
   const [childRows, setChildRows] = useState<Record<string, Transaction[]>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
   const [showTotalsRow, setShowTotalsRow] = useState(() => {
@@ -28,28 +43,45 @@ const Home = () => {
     const stored = localStorage.getItem("showTotalsRow");
     return stored === null ? true : stored === "true";
   });
-  const [textFilters, setTextFilters] = useState<TextFilters>(EMPTY_TEXT_FILTERS);
-  const [debouncedTextFilters, setDebouncedTextFilters] = useState<TextFilters>(EMPTY_TEXT_FILTERS);
+  const [textFilters, setTextFilters] =
+    useState<TextFilters>(EMPTY_TEXT_FILTERS);
+  const [debouncedTextFilters, setDebouncedTextFilters] =
+    useState<TextFilters>(EMPTY_TEXT_FILTERS);
   const textFiltersRef = useRef<TextFilters>(EMPTY_TEXT_FILTERS);
   const [showAddRow, setShowAddRow] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([]));
-  const [selectedIds, setSelectedIds] = useState<Map<string, Transaction>>(new Map());
+  const [selectedMap, setSelectedMap] = useState<Map<string, Transaction>>(
+    new Map(),
+  );
   const [allGroups, setAllGroups] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [allSources, setAllSources] = useState<string[]>([]);
   const [pinnedRow, setPinnedRow] = useState<Transaction | null>(null);
-  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({ category: [], status: [], source: [] });
-  const columnFiltersRef = useRef<ColumnFilters>({ category: [], status: [], source: [] });
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
+    category: [],
+    status: [],
+    source: [],
+  });
+  const columnFiltersRef = useRef<ColumnFilters>({
+    category: [],
+    status: [],
+    source: [],
+  });
 
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
   const prevUserIdRef = useRef<string | null>(null);
+  const scrollToTopRef = useRef<(() => void) | null>(null);
 
   // Keep refs in sync so fetchPage always reads latest values without being recreated
-  useEffect(() => { columnFiltersRef.current = columnFilters; }, [columnFilters]);
-  useEffect(() => { textFiltersRef.current = debouncedTextFilters; }, [debouncedTextFilters]);
+  useEffect(() => {
+    columnFiltersRef.current = columnFilters;
+  }, [columnFilters]);
+  useEffect(() => {
+    textFiltersRef.current = debouncedTextFilters;
+  }, [debouncedTextFilters]);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -81,7 +113,8 @@ const Home = () => {
       if (tf.amountMax !== "") params.set("filterAmountMax", tf.amountMax);
 
       const f = columnFiltersRef.current;
-      if (f.category.length > 0) params.set("filterCategory", f.category.join(","));
+      if (f.category.length > 0)
+        params.set("filterCategory", f.category.join(","));
       if (f.status.length > 0) params.set("filterStatus", f.status.join(","));
       if (f.source.length > 0) params.set("filterSource", f.source.join(","));
 
@@ -90,7 +123,6 @@ const Home = () => {
         if (!res.ok) throw new Error("Fetch failed");
         const json: PaginatedResponse = await res.json();
         setPageRows(json.data);
-        setTotal(json.total);
         setTotalAmount(json.totalAmount);
         setTotalPages(json.totalPages);
         setCurrentPage(json.page);
@@ -111,12 +143,6 @@ const Home = () => {
     setAllSources(data.sources);
   }, [session?.user?.id]);
 
-  const anyFilterActive = () => {
-    const tf = textFiltersRef.current;
-    const cf = columnFiltersRef.current;
-    return !!(tf.description || tf.dateFrom || tf.dateTo || tf.amountMin || tf.amountMax ||
-      cf.category.length > 0 || cf.status.length > 0 || cf.source.length > 0);
-  };
 
   // Debounce text/range filters — reset to page 1 and clear pinned row
   useEffect(() => {
@@ -140,8 +166,14 @@ const Home = () => {
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, currentPage, debouncedTextFilters, sortConfig, columnFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    session?.user?.id,
+    currentPage,
+    debouncedTextFilters,
+    sortConfig,
+    columnFilters,
+  ]);
 
   const handleTextFilterChange = (col: keyof TextFilters, value: string) => {
     setTextFilters((prev) => ({ ...prev, [col]: value }));
@@ -175,41 +207,46 @@ const Home = () => {
     }
   };
 
-  const handleAddTransaction = (
+  const handleAddTransaction = async (
     newTransaction: Omit<Transaction, "id" | "createdAt">,
-  ) => {
-    const now = Date.now();
-
-    fetch("/api/transactions", {
+  ): Promise<void> => {
+    const res = await fetch("/api/transactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...newTransaction, createdAt: now }),
-    })
-      .then((res) => res.json())
-      .then((created: Transaction) => {
-        addMetadata(newTransaction);
-        setPinnedRow(created);
-        setCurrentPage(1);
-        // If already on page 1, currentPage state won't change so trigger manually
-        fetchPage({
-          page: 1,
-          sortBy: sortConfig?.key ?? null,
-          sortDir: sortConfig?.direction ?? null,
-        });
-      });
-
-    setShowAddRow(false);
+      body: JSON.stringify({ ...newTransaction }),
+    });
+    const created: Transaction = await res.json();
+    addMetadata(newTransaction);
+    setPageRows((prev) => [created, ...prev]);
+    // setPinnedRow(created);
+    // setCurrentPage(1);
+    // If already on page 1, currentPage state won't change so trigger manually
+    // fetchPage({
+    //   page: 1,
+    //   sortBy: sortConfig?.key ?? null,
+    //   sortDir: sortConfig?.direction ?? null,
+    // });
+    // setShowAddRow(false);
   };
 
-  const handleUpdateTransaction = (
+  const handleUpdateTransaction = async (
     id: string,
     updates: Partial<Transaction>,
   ) => {
+    await fetch(`/api/transactions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    //sets totalAmount without refetching from the DB
     if (updates.amount !== undefined) {
       const existing =
         pageRows.find((tx) => tx.id === id) ??
         (pinnedRow?.id === id ? pinnedRow : null) ??
-        Object.values(childRows).flat().find((tx) => tx.id === id) ??
+        Object.values(childRows)
+          .flat()
+          .find((tx) => tx.id === id) ??
         null;
       if (existing) {
         setTotalAmount((prev) => prev + (updates.amount! - existing.amount));
@@ -233,46 +270,71 @@ const Home = () => {
     });
     setPinnedRow((prev) => (prev?.id === id ? { ...prev, ...updates } : prev));
 
-    fetch(`/api/transactions/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    }).then(() => {
-      if (updates.category !== undefined || updates.source !== undefined) {
-        fetchMetadata();
-      }
-    });
+    if (updates.category !== undefined || updates.source !== undefined) {
+      fetchMetadata();
+    }
+
+    const parentGroupId =
+      Object.keys(childRows).find((gid) =>
+        childRows[gid].some((tx) => tx.id === id),
+      ) ?? null;
+
+    if (parentGroupId) {
+      const updatedChildren = childRows[parentGroupId].map((tx) =>
+        tx.id === id ? { ...tx, ...updates } : tx,
+      );
+      const groupUpdates = computeGroupFields(updatedChildren);
+
+      setPageRows((prev) =>
+        prev.map((tx) =>
+          tx.id === parentGroupId ? { ...tx, ...groupUpdates } : tx,
+        ),
+      );
+      setAllGroups((prev) =>
+        prev.map((g) =>
+          g.id === parentGroupId ? { ...g, ...groupUpdates } : g,
+        ),
+      );
+      setPinnedRow((prev) =>
+        prev?.id === parentGroupId ? { ...prev, ...groupUpdates } : prev,
+      );
+
+      fetch(`/api/transactions/${parentGroupId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(groupUpdates),
+      });
+    }
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    fetch(`/api/transactions/${id}`, {
-      method: "DELETE",
-    }).then(() => {
-      if (allGroups.some((g) => g.id === id)) {
-        setAllGroups((prev) => prev.filter((g) => g.id !== id));
-      }
-      if (pinnedRow?.id === id) setPinnedRow(null);
-      const isLastOnPage = pageRows.length === 1 && currentPage > 1;
-      const nextPage = isLastOnPage ? currentPage - 1 : currentPage;
-      setChildRows((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      fetchPage({
-        page: nextPage,
-        sortBy: sortConfig?.key ?? null,
-        sortDir: sortConfig?.direction ?? null,
-      });
-      fetchMetadata();
-      if (isLastOnPage) setCurrentPage(nextPage);
-    });
+  const handleDeleteTransaction = async (id: string) => {
+    await fetch(`/api/transactions/${id}`, { method: "DELETE" });
 
     setExpandedIds((prev) => {
       const s = new Set(prev);
       s.delete(id);
       return s;
     });
+
+    setChildRows((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+    if (pinnedRow?.id === id) setPinnedRow(null);
+
+    const isLastOnPage = pageRows.length === 1 && currentPage > 1;
+    const nextPage = isLastOnPage ? currentPage - 1 : currentPage;
+
+    fetchPage({
+      page: nextPage,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
+    });
+    fetchMetadata();
+
+    if (isLastOnPage) setCurrentPage(nextPage);
   };
 
   const handleToggleExpand = async (id: string) => {
@@ -296,16 +358,13 @@ const Home = () => {
     return [pinnedRow, ...pageRows];
   }, [pinnedRow, pageRows]);
 
-  const allTransactions = [
-    ...displayRows,
-    ...Object.values(childRows).flat(),
-  ];
+  const allTransactions = [...displayRows, ...Object.values(childRows).flat()];
 
-  const selectedUngrouped = [...selectedIds.values()].filter(
+  const selectedUngrouped = [...selectedMap.values()].filter(
     (tx) => !tx.isGroup && tx.parentId === null,
   );
 
-  const clearSelected = () => setSelectedIds(new Map());
+  const clearSelected = () => setSelectedMap(new Map());
 
   const handleCreateGroup = async (name: string): Promise<string> => {
     const children = selectedUngrouped;
@@ -315,12 +374,9 @@ const Home = () => {
       description: name,
       category: null,
       ...groupInfo,
-      createdAt: Date.now(),
       isGroup: true,
       parentId: null,
     };
-
-    clearSelected();
 
     // POST first — children's parentId FK requires the group row to exist
     const groupRes = await fetch("/api/transactions", {
@@ -331,150 +387,159 @@ const Home = () => {
     if (!groupRes.ok) return "";
 
     const createdGroup = await groupRes.json();
-    const actualGroupId = createdGroup.id;
+    const createdGroupId = createdGroup.id;
 
     await fetch("/api/transactions", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: childIds, updates: { parentId: actualGroupId } }),
+      body: JSON.stringify({
+        ids: childIds,
+        updates: { parentId: createdGroupId },
+      }),
     });
 
-    setCurrentPage(1);
+    clearSelected();
+
     await fetchPage({
-      page: 1,
+      page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
     });
     setAllGroups((prev) => [createdGroup, ...prev]);
-    if (anyFilterActive()) setPinnedRow(createdGroup);
+    setPinnedRow(createdGroup);
+    scrollToTopRef.current?.();
 
-    return actualGroupId;
+    return createdGroupId;
   };
 
-  const handleAddToGroup = (groupId: string) => {
+  const handleAddToGroup = async (groupId: string) => {
     if (selectedUngrouped.length === 0) return;
 
     const addedTransactions = selectedUngrouped;
     const childIds = addedTransactions.map((tx) => tx.id);
 
-    clearSelected();
-
-    fetch("/api/transactions", {
+    await fetch("/api/transactions", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: childIds, updates: { parentId: groupId } }),
-    }).then(() => {
-      if (childRows[groupId]) {
-        const updatedChildren = [
-          ...childRows[groupId],
-          ...addedTransactions.map((tx) => ({ ...tx, parentId: groupId })),
-        ];
-        setChildRows((prev) => ({ ...prev, [groupId]: updatedChildren }));
-        handleUpdateTransaction(groupId, computeGroupFields(updatedChildren));
-      }
+    });
 
-      fetchPage({
-        page: currentPage,
-        sortBy: sortConfig?.key ?? null,
-        sortDir: sortConfig?.direction ?? null,
-      });
+    clearSelected();
+
+    if (childRows[groupId]) {
+      const updatedChildren = [
+        ...childRows[groupId],
+        ...addedTransactions.map((tx) => ({ ...tx, parentId: groupId })),
+      ];
+      setChildRows((prev) => ({ ...prev, [groupId]: updatedChildren }));
+      handleUpdateTransaction(groupId, computeGroupFields(updatedChildren));
+    }
+
+    fetchPage({
+      page: currentPage,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
     });
   };
 
-  const handleUnlinkChild = (childId: string) => {
+  const handleUnlinkChild = async (childId: string) => {
     const parentGroupId =
       Object.keys(childRows).find((gid) =>
         childRows[gid].some((tx) => tx.id === childId),
       ) ?? null;
 
-    fetch(`/api/transactions/${childId}`, {
+    await fetch(`/api/transactions/${childId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parentId: null }),
-    }).then(() => {
-      setChildRows((prev) => {
-        const next = { ...prev };
-        for (const groupId of Object.keys(next)) {
-          next[groupId] = next[groupId].filter((tx) => tx.id !== childId);
-        }
-        return next;
-      });
+    });
 
-      if (parentGroupId) {
-        const remaining = childRows[parentGroupId].filter((tx) => tx.id !== childId);
-        if (remaining.length === 0) {
-          handleDeleteTransaction(parentGroupId);
-          return;
-        }
-        handleUpdateTransaction(parentGroupId, computeGroupFields(remaining));
+    setChildRows((prev) => {
+      const next = { ...prev };
+      for (const groupId of Object.keys(next)) {
+        next[groupId] = next[groupId].filter((tx) => tx.id !== childId);
       }
+      return next;
+    });
 
-      fetchPage({
-        page: currentPage,
-        sortBy: sortConfig?.key ?? null,
-        sortDir: sortConfig?.direction ?? null,
-      });
+    if (parentGroupId) {
+      const remaining = childRows[parentGroupId].filter(
+        (tx) => tx.id !== childId,
+      );
+      if (remaining.length === 0) {
+        handleDeleteTransaction(parentGroupId);
+        return;
+      }
+      handleUpdateTransaction(parentGroupId, computeGroupFields(remaining));
+    }
+
+    fetchPage({
+      page: currentPage,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
     });
   };
 
-  const handleBulkDelete = (ids: string[]) => {
-    fetch("/api/transactions", {
+  const handleBulkDelete = async (ids: string[]) => {
+    await fetch("/api/transactions", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids }),
-    }).then(() => {
-      clearSelected();
-      fetchPage({
-        page: currentPage,
-        sortBy: sortConfig?.key ?? null,
-        sortDir: sortConfig?.direction ?? null,
-      });
+    });
+    clearSelected();
+    fetchPage({
+      page: currentPage,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
     });
   };
 
-  const handleBulkUpdate = (ids: string[], updates: Partial<Transaction>) => {
+  const handleBulkUpdate = async (
+    ids: string[],
+    updates: Partial<Transaction>,
+  ) => {
     setPageRows((prev) =>
       prev.map((tx) => (ids.includes(tx.id) ? { ...tx, ...updates } : tx)),
     );
-    fetch("/api/transactions", {
+    await fetch("/api/transactions", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids, updates }),
-    }).then(() => {
-      clearSelected();
-      fetchPage({
-        page: currentPage,
-        sortBy: sortConfig?.key ?? null,
-        sortDir: sortConfig?.direction ?? null,
-      });
+    });
+    clearSelected();
+    fetchPage({
+      page: currentPage,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
     });
   };
 
-  const handleImportTransactions = (
+  const handleImportTransactions = async (
     newTransactions: Omit<Transaction, "id" | "createdAt">[],
   ) => {
     const now = Date.now();
-    const sorted = [...newTransactions].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...newTransactions].sort((a, b) =>
+      b.date.localeCompare(a.date),
+    );
     const withTimestamps = sorted.map((tx, i) => ({
       ...tx,
       createdAt: now - i,
     }));
 
-    fetch("/api/transactions", {
+    const res = await fetch("/api/transactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(withTimestamps),
-    })
-      .then((res) => res.json())
-      .then((created: Transaction[]) => {
-        setSelectedIds(new Map(created.map((row: Transaction) => [row.id, row])));
-        setCurrentPage(1);
-        fetchPage({
-          page: 1,
-          sortBy: sortConfig?.key ?? null,
-          sortDir: sortConfig?.direction ?? null,
-        });
-      });
+    });
+
+    const created: Transaction[] = await res.json();
+    setSelectedMap(new Map(created.map((row: Transaction) => [row.id, row])));
+    setCurrentPage(1);
+    fetchPage({
+      page: 1,
+      sortBy: sortConfig?.key ?? null,
+      sortDir: sortConfig?.direction ?? null,
+    });
   };
 
   if (isPending || !session) return null;
@@ -522,7 +587,13 @@ const Home = () => {
               New
             </button>
 
-            <SettingsDrawer showTotalsRow={showTotalsRow} onToggleTotalsRow={(val) => { localStorage.setItem("showTotalsRow", String(val)); setShowTotalsRow(val); }} />
+            <SettingsDrawer
+              showTotalsRow={showTotalsRow}
+              onToggleTotalsRow={(val) => {
+                localStorage.setItem("showTotalsRow", String(val));
+                setShowTotalsRow(val);
+              }}
+            />
           </div>
         </header>
 
@@ -542,16 +613,16 @@ const Home = () => {
             onCancelAdd={() => setShowAddRow(false)}
             expandedIds={expandedIds}
             onToggleExpand={handleToggleExpand}
-            selectedIds={selectedIds}
+            selectedIds={selectedMap}
             onToggleSelect={(tx) =>
-              setSelectedIds((prev) => {
+              setSelectedMap((prev) => {
                 const next = new Map(prev);
                 next.has(tx.id) ? next.delete(tx.id) : next.set(tx.id, tx);
                 return next;
               })
             }
             onSelectAll={(txs) =>
-              setSelectedIds((prev) => {
+              setSelectedMap((prev) => {
                 const next = new Map(prev);
                 for (const tx of txs) next.set(tx.id, tx);
                 return next;
@@ -573,13 +644,13 @@ const Home = () => {
             onTextFilterChange={handleTextFilterChange}
             totalAmount={totalAmount}
             showTotalsRow={showTotalsRow}
+            scrollToTopRef={scrollToTopRef}
           />
         </div>
         <div className="shrink-0">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            total={total}
             isLoading={isLoading}
             onPageChange={(page) => setCurrentPage(page)}
           />
