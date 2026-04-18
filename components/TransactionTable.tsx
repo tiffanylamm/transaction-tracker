@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { Transaction, SortConfig, Status, STATUSES } from "@/types/transaction";
 import StatusBadge from "./StatusBadge";
-import InputAutocomplete from "./InputAutocomplete";
 import BulkActions from "./BulkActions";
 
 function DriveFileCell({
@@ -965,17 +964,18 @@ const TransactionTable = ({
                 </td>
                 {/* Category */}
                 <td className="h-9 px-3">
-                  <InputAutocomplete
+                  <input
+                    type="text"
+                    placeholder="Category..."
                     value={newTransaction.category ?? ""}
-                    onChange={(val) =>
+                    autoCapitalize="none"
+                    className={addInputClass}
+                    onChange={(e) =>
                       setNewTransaction({
                         ...newTransaction,
-                        category: val.trim() || null,
+                        category: e.target.value || null,
                       })
                     }
-                    suggestions={allCategories}
-                    placeholder="Category..."
-                    positionerZIndex={50}
                   />
                 </td>
                 {/* Amount */}
@@ -1015,17 +1015,18 @@ const TransactionTable = ({
                 </td>
                 {/* Source */}
                 <td className="h-9 px-3">
-                  <InputAutocomplete
+                  <input
+                    type="text"
+                    placeholder="Source..."
                     value={newTransaction.source ?? ""}
-                    onChange={(val) =>
+                    autoCapitalize="none"
+                    className={addInputClass}
+                    onChange={(e) =>
                       setNewTransaction({
                         ...newTransaction,
-                        source: val.trim() || null,
+                        source: e.target.value || null,
                       })
                     }
-                    suggestions={allSources}
-                    placeholder="Source..."
-                    positionerZIndex={50}
                   />
                 </td>
                 {/* File — not available on new row */}
@@ -1193,21 +1194,15 @@ const TransactionTable = ({
                         }
                       >
                         {isEditing(tx.id, "category") ? (
-                          <InputAutocomplete
+                          <input
+                            ref={inputRef as React.RefObject<HTMLInputElement>}
+                            type="text"
                             value={editValue}
-                            onChange={setEditValue}
+                            autoCapitalize="none"
+                            onChange={(e) => setEditValue(e.target.value)}
                             onBlur={commitEdit}
-                            onCancel={() => {
-                              setEditingCell(null);
-                              setEditValue("");
-                            }}
-                            onCommit={(val) => {
-                              onUpdate(tx.id, { category: val.trim() || null });
-                              setEditingCell(null);
-                              setEditValue("");
-                            }}
-                            suggestions={allCategories}
-                            positionerZIndex={50}
+                            onKeyDown={handleKeyDown}
+                            className={editInputClass}
                           />
                         ) : (
                           <span className="block py-px">
@@ -1293,21 +1288,15 @@ const TransactionTable = ({
                         }
                       >
                         {isEditing(tx.id, "source") ? (
-                          <InputAutocomplete
+                          <input
+                            ref={inputRef as React.RefObject<HTMLInputElement>}
+                            type="text"
                             value={editValue}
-                            onChange={setEditValue}
+                            autoCapitalize="none"
+                            onChange={(e) => setEditValue(e.target.value)}
                             onBlur={commitEdit}
-                            onCancel={() => {
-                              setEditingCell(null);
-                              setEditValue("");
-                            }}
-                            onCommit={(val) => {
-                              onUpdate(tx.id, { source: val.trim() || null });
-                              setEditingCell(null);
-                              setEditValue("");
-                            }}
-                            suggestions={allSources}
-                            positionerZIndex={50}
+                            onKeyDown={handleKeyDown}
+                            className={editInputClass}
                           />
                         ) : (
                           <span className="block py-px">
@@ -1463,23 +1452,15 @@ const TransactionTable = ({
                             }
                           >
                             {isEditing(child.id, "category") ? (
-                              <InputAutocomplete
+                              <input
+                                ref={inputRef as React.RefObject<HTMLInputElement>}
+                                type="text"
                                 value={editValue}
-                                onChange={setEditValue}
+                                autoCapitalize="none"
+                                onChange={(e) => setEditValue(e.target.value)}
                                 onBlur={commitEdit}
-                                onCancel={() => {
-                                  setEditingCell(null);
-                                  setEditValue("");
-                                }}
-                                onCommit={(val) => {
-                                  onUpdate(child.id, {
-                                    category: val.trim() || null,
-                                  });
-                                  setEditingCell(null);
-                                  setEditValue("");
-                                }}
-                                suggestions={allCategories}
-                                positionerZIndex={50}
+                                onKeyDown={handleKeyDown}
+                                className={editInputClass}
                               />
                             ) : (
                               <span className="cursor-text block py-px">
@@ -1576,23 +1557,15 @@ const TransactionTable = ({
                             }
                           >
                             {isEditing(child.id, "source") ? (
-                              <InputAutocomplete
+                              <input
+                                ref={inputRef as React.RefObject<HTMLInputElement>}
+                                type="text"
                                 value={editValue}
-                                onChange={setEditValue}
+                                autoCapitalize="none"
+                                onChange={(e) => setEditValue(e.target.value)}
                                 onBlur={commitEdit}
-                                onCancel={() => {
-                                  setEditingCell(null);
-                                  setEditValue("");
-                                }}
-                                onCommit={(val) => {
-                                  onUpdate(child.id, {
-                                    source: val.trim() || null,
-                                  });
-                                  setEditingCell(null);
-                                  setEditValue("");
-                                }}
-                                suggestions={allSources}
-                                positionerZIndex={50}
+                                onKeyDown={handleKeyDown}
+                                className={editInputClass}
                               />
                             ) : (
                               <span className="cursor-text block py-px">

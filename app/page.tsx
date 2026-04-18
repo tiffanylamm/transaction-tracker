@@ -233,13 +233,13 @@ const Home = () => {
     id: string,
     updates: Partial<Transaction>,
   ) => {
-    await fetch(`/api/transactions/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    // Compute parentGroupId before childRows is mutated
+    const parentGroupId =
+      Object.keys(childRows).find((gid) =>
+        childRows[gid].some((tx) => tx.id === id),
+      ) ?? null;
 
-    //sets totalAmount without refetching from the DB
+    // Optimistically update all local state before awaiting the network call
     if (updates.amount !== undefined) {
       const existing =
         pageRows.find((tx) => tx.id === id) ??
@@ -274,11 +274,6 @@ const Home = () => {
       fetchMetadata();
     }
 
-    const parentGroupId =
-      Object.keys(childRows).find((gid) =>
-        childRows[gid].some((tx) => tx.id === id),
-      ) ?? null;
-
     if (parentGroupId) {
       const updatedChildren = childRows[parentGroupId].map((tx) =>
         tx.id === id ? { ...tx, ...updates } : tx,
@@ -305,6 +300,12 @@ const Home = () => {
         body: JSON.stringify(groupUpdates),
       });
     }
+
+    await fetch(`/api/transactions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
   };
 
   const handleDeleteTransaction = async (id: string) => {
