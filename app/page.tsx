@@ -143,7 +143,6 @@ const Home = () => {
     setAllSources(data.sources);
   }, [session?.user?.id]);
 
-
   // Debounce text/range filters — reset to page 1 and clear pinned row
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -433,7 +432,10 @@ const Home = () => {
         ...addedTransactions.map((tx) => ({ ...tx, parentId: groupId })),
       ];
       setChildRows((prev) => ({ ...prev, [groupId]: updatedChildren }));
-      handleUpdateTransaction(groupId, computeGroupFields(updatedChildren));
+      await handleUpdateTransaction(
+        groupId,
+        computeGroupFields(updatedChildren),
+      );
     }
 
     fetchPage({
@@ -455,29 +457,32 @@ const Home = () => {
       body: JSON.stringify({ parentId: null }),
     });
 
-    setChildRows((prev) => {
-      const next = { ...prev };
-      for (const groupId of Object.keys(next)) {
-        next[groupId] = next[groupId].filter((tx) => tx.id !== childId);
-      }
-      return next;
-    });
-
     if (parentGroupId) {
       const remaining = childRows[parentGroupId].filter(
         (tx) => tx.id !== childId,
       );
       if (remaining.length === 0) {
-        handleDeleteTransaction(parentGroupId);
+        await handleDeleteTransaction(parentGroupId);
         return;
       }
-      handleUpdateTransaction(parentGroupId, computeGroupFields(remaining));
+      await handleUpdateTransaction(
+        parentGroupId,
+        computeGroupFields(remaining),
+      );
     }
 
     fetchPage({
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+    });
+
+    setChildRows((prev) => {
+      const next = { ...prev };
+      for (const groupId of Object.keys(next)) {
+        next[groupId] = next[groupId].filter((tx) => tx.id !== childId);
+      }
+      return next;
     });
   };
 

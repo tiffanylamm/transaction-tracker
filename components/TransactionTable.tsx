@@ -211,6 +211,8 @@ const TransactionTable = ({
   const [newTransaction, setNewTransaction] = useState<Partial<Transaction>>(emptyNewTransaction);
   const [showAddErrors, setShowAddErrors] = useState(false);
 
+  const newDescriptionRef = useRef<HTMLInputElement>(null);
+
   const attachingTxIdRef = useRef<{
     id: string;
     date: string;
@@ -576,7 +578,7 @@ const TransactionTable = ({
     const tx = allTransactions.find((t) => t.id === id);
     if (field === "amount") {
       const parsed = parseFloat(editValue);
-      if (!isNaN(parsed) && parsed !== tx?.amount)
+      if (!isNaN(parsed) && parsed !== Number(tx?.amount))
         onUpdate(id, { amount: parsed });
     } else if (field === "date") {
       if (editValue && editValue !== tx?.date)
@@ -607,6 +609,17 @@ const TransactionTable = ({
     }
   };
 
+  const handleNewRowKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSaveNew();
+    } else if (e.key === "Escape") {
+      setShowAddErrors(false);
+      setNewTransaction(emptyNewTransaction);
+      onCancelAdd();
+    }
+  };
+
   const handleSaveNew = async () => {
     if (
       !newTransaction.date ||
@@ -630,6 +643,7 @@ const TransactionTable = ({
     });
     setShowAddErrors(false);
     setNewTransaction(emptyNewTransaction);
+    newDescriptionRef.current?.focus();
   };
 
   const formatDate = (dateString: string) => {
@@ -930,7 +944,7 @@ const TransactionTable = ({
             )}
             {/* Add Transaction Row */}
             {showAddRow && (
-              <tr className="bg-gray-50/50 dark:bg-[#1b1b1b]/50 border-b border-gray-200 dark:border-gray-700">
+              <tr className="border-b border-gray-100 dark:border-gray-800" onKeyDown={handleNewRowKeyDown}>
                 <td className="h-9 px-3" />
                 {/* Date */}
                 <td className="h-9 px-3">
@@ -950,6 +964,7 @@ const TransactionTable = ({
                 {/* Description */}
                 <td className="h-9 px-3">
                   <input
+                    ref={newDescriptionRef}
                     type="text"
                     placeholder="Description..."
                     value={newTransaction.description}
@@ -1330,7 +1345,7 @@ const TransactionTable = ({
                       </td>
 
                       {/* Controls */}
-                      <td className={`${tdClass} text-right`}>
+                      <td className={tdClass}>
                         <button
                           aria-label={
                             tx.isGroup
@@ -1598,7 +1613,7 @@ const TransactionTable = ({
                           </td>
 
                           {/* Unlink from group */}
-                          <td className={`${tdClass} text-right`}>
+                          <td className={`${tdClass}`}>
                             <button
                               aria-label="Remove from group"
                               title="Remove from group"
