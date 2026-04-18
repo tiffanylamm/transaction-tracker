@@ -141,6 +141,20 @@ const localToday = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+function buildReceiptName(
+  tx: { date: string; category: string | null; description: string },
+  ext: string,
+): string {
+  const sanitize = (s: string) => s.replace(/[^\w]/g, "");
+  const titleCase = (s: string) =>
+    s.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+  const parts: string[] = [tx.date, "Receipt"];
+  if (tx.category && tx.category !== "None") parts.push(sanitize(tx.category));
+  if (tx.description) parts.push(sanitize(titleCase(tx.description)));
+  const base = parts.join("_");
+  return ext ? `${base}.${ext}` : base;
+}
+
 const LOCKED_GROUP_FIELDS = new Set(["date", "amount", "status", "source"]);
 
 type EditableFields =
@@ -195,7 +209,12 @@ const TransactionTable = ({
     driveFileId: null,
   });
 
-  const attachingTxIdRef = useRef<string | null>(null);
+  const attachingTxIdRef = useRef<{
+    id: string;
+    date: string;
+    category: string | null;
+    description: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingIds, setUploadingIds] = useState<Set<string>>(new Set());
   const [driveConnected, setDriveConnected] = useState<boolean | null>(null);
@@ -204,25 +223,29 @@ const TransactionTable = ({
     fetch("/api/drive/token").then((r) => setDriveConnected(r.ok));
   }, []);
 
-  const handleAttach = (txId: string) => {
+  const handleAttach = (tx: Pick<Transaction, "id" | "date" | "category" | "description">) => {
     if (!driveConnected) {
       alert("Google Drive is not connected. Go to Settings → Integrations → Connect.");
       return;
     }
-    attachingTxIdRef.current = txId;
+    attachingTxIdRef.current = { id: tx.id, date: tx.date, category: tx.category, description: tx.description };
     fileInputRef.current?.click();
   };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    const txId = attachingTxIdRef.current;
+    const txMeta = attachingTxIdRef.current;
     e.target.value = "";
-    if (!file || !txId) return;
+    if (!file || !txMeta) return;
+
+    const txId = txMeta.id;
+    const ext = file.name.includes(".") ? file.name.split(".").pop()! : "";
+    const renamedFile = new File([file], buildReceiptName(txMeta, ext), { type: file.type });
 
     setUploadingIds((prev) => new Set([...prev, txId]));
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", renamedFile);
       const res = await fetch("/api/drive/upload", {
         method: "POST",
         body: formData,
@@ -1316,7 +1339,7 @@ const TransactionTable = ({
                             />
                           ) : (
                             <button
-                              onClick={() => handleAttach(tx.id)}
+                              onClick={() => handleAttach(tx)}
                               className="p-0.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
                               aria-label="Upload file to Drive"
                               title="Upload file to Google Drive"
@@ -1600,7 +1623,7 @@ const TransactionTable = ({
                               />
                             ) : (
                               <button
-                                onClick={() => handleAttach(child.id)}
+                                onClick={() => handleAttach(child)}
                                 className="p-0.5 text-gray-300 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
                                 aria-label="Upload file to Drive"
                                 title="Upload file to Google Drive"
