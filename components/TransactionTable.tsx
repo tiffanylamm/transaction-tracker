@@ -699,8 +699,8 @@ const TransactionTable = ({
   const isEditing = (id: string, field: EditableFields) =>
     editingCell?.id === id && editingCell?.field === field;
 
-  const thClass = `h-9 px-4 font-normal text-[11px] uppercase tracking-wider text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 select-none`;
-  const tdClass = `h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 whitespace-nowrap`;
+  const thClass = `h-9 px-4 font-normal text-[11px] uppercase tracking-wider text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 select-none`;
+  const tdClass = `h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 whitespace-nowrap`;
   const addInputClass = `w-full bg-transparent border-0 border-b border-transparent hover:border-gray-200 dark:hover:border-gray-700 focus:ring-0 p-1 text-[13px] text-gray-900 dark:text-foreground placeholder-gray-400 dark:placeholder-gray-500 transition-colors outline-none`;
   const editInputClass = `w-full bg-transparent border-0 outline-none text-[13px] text-gray-900 dark:text-foreground p-0 m-0 focus:ring-0 caret-gray-400 dark:caret-gray-500`;
 
@@ -747,7 +747,7 @@ const TransactionTable = ({
         ref={tableContainerRef}
         className="overflow-x-auto overflow-y-auto flex-1 min-h-0"
       >
-        <table className="w-full text-left border-collapse">
+        <table className="w-full min-w-280 text-left border-collapse table-fixed">
           <colgroup>
             <col className="w-8" />
             <col className="w-32" />
@@ -756,7 +756,7 @@ const TransactionTable = ({
             <col className="w-32" />
             <col className="w-32" />
             <col className="w-40" />
-            <col className="w-32" />
+            <col className="w-16" />
             <col className="w-16" />
           </colgroup>
           {/* Header */}
@@ -807,7 +807,7 @@ const TransactionTable = ({
                 </div>
                 {openFilterCol === "date" && renderDateRangeDropdown()}
               </th>
-              <th className={`${thClass} relative min-w-64 max-w-80`}>
+              <th className={`${thClass} relative min-w-64`}>
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
@@ -920,7 +920,7 @@ const TransactionTable = ({
                 {openFilterCol === "source" &&
                   renderFilterDropdown("source", allSources, true)}
               </th>
-              <th className={`${thClass} w-32`}>File</th>
+              <th className={`${thClass} w-16`}>File</th>
               <th className={`${thClass} w-16`} />
             </tr>
           </thead>
@@ -1195,7 +1195,7 @@ const TransactionTable = ({
 
                       {/* Description */}
                       <td
-                        className={`h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium max-w-80`}
+                        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium`}
                         onClick={() =>
                           !isEditing(tx.id, "description") &&
                           startEditing(
@@ -1269,7 +1269,7 @@ const TransactionTable = ({
 
                       {/* Amount */}
                       <td
-                        className={`h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium text-right`}
+                        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium text-right`}
                         onClick={() =>
                           !isEditing(tx.id, "amount") &&
                           startEditing(
@@ -1547,7 +1547,7 @@ const TransactionTable = ({
 
                           {/* Description */}
                           <td
-                            className={`${tdClass} dark:text-foreground max-w-80`}
+                            className={`${tdClass} dark:text-foreground`}
                             onClick={() =>
                               !isEditing(child.id, "description") &&
                               startEditing(

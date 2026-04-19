@@ -684,7 +684,7 @@ const Home = () => {
 
   return (
     <main className="h-screen flex flex-col overflow-hidden text-gray-900 dark:text-foreground font-sans">
-      <div className="max-w-5xl w-full mx-auto px-6 py-12 flex flex-col flex-1 min-h-0">
+      <div className="w-full mx-auto px-4 md:px-16 xl:px-32 2xl:px-46 py-12 flex flex-col flex-1 min-h-0">
         {/* Header Area */}
         <header className="flex justify-between items-center gap-4 mb-8 shrink-0">
           {/* Main Logo */}
