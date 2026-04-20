@@ -11,9 +11,11 @@ type Theme = "light" | "dark" | "system";
 interface SettingsDrawerProps {
   showTotalsRow: boolean;
   onToggleTotalsRow: (val: boolean) => void;
+  showGroupFilters: boolean;
+  onToggleGroupFilters: (val: boolean) => void;
 }
 
-export default function SettingsDrawer({ showTotalsRow, onToggleTotalsRow }: SettingsDrawerProps) {
+export default function SettingsDrawer({ showTotalsRow, onToggleTotalsRow, showGroupFilters, onToggleGroupFilters }: SettingsDrawerProps) {
   const { data: session } = authClient.useSession();
   const router = useRouter();
   const [theme, setTheme] = useState<Theme>(() => {
@@ -167,6 +169,21 @@ export default function SettingsDrawer({ showTotalsRow, onToggleTotalsRow }: Set
                     >
                       <span
                         className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white dark:bg-gray-900 shadow-sm transition-transform mt-0.5 ${showTotalsRow ? "translate-x-4.5" : "translate-x-0.5"}`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">
+                      Show Group Filters
+                    </span>
+                    <button
+                      role="switch"
+                      aria-checked={showGroupFilters}
+                      onClick={() => onToggleGroupFilters(!showGroupFilters)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${showGroupFilters ? "bg-gray-900 dark:bg-gray-100" : "bg-gray-200 dark:bg-gray-700"}`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white dark:bg-gray-900 shadow-sm transition-transform mt-0.5 ${showGroupFilters ? "translate-x-4.5" : "translate-x-0.5"}`}
                       />
                     </button>
                   </div>

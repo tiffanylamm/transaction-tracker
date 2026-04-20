@@ -9,7 +9,7 @@ import {
 import TransactionTable from "@/components/TransactionTable";
 import CSVImportModal from "@/components/CSVImportModal";
 import Pagination from "@/components/Pagination";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, X } from "lucide-react";
 import { computeGroupFields } from "@/lib/groupUtils";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -58,6 +58,12 @@ const Home = () => {
   const [allGroups, setAllGroups] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [allSources, setAllSources] = useState<string[]>([]);
+  const [groupFilters, setGroupFilters] = useState<Record<string, string[]>>({});
+  const [showGroupFilters, setShowGroupFilters] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("showGroupFilters");
+    return stored === null ? true : stored === "true";
+  });
   const [pinnedRow, setPinnedRow] = useState<Transaction | null>(null);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
     category: [],
@@ -413,10 +419,26 @@ const Home = () => {
   };
 
   const handleAddToGroup = async (groupId: string) => {
-    if (selectedUngrouped.length === 0) return;
+    const selectedTxs = [...selectedMap.values()].filter(
+      (tx) => !tx.isGroup && tx.id !== groupId,
+    );
+    if (selectedTxs.length === 0) return;
 
-    const addedTransactions = selectedUngrouped;
-    const childIds = addedTransactions.map((tx) => tx.id);
+    const childIds = selectedTxs.map((tx) => tx.id);
+
+    // Snapshot old-group remaining arrays before any state mutation
+    const oldGroupIds = [...new Set(
+      selectedTxs.map((tx) => tx.parentId).filter(Boolean) as string[],
+    )].filter((id) => id !== groupId);
+
+    const oldGroupRemainders = new Map(
+      oldGroupIds
+        .filter((id) => childRows[id])
+        .map((id) => [
+          id,
+          childRows[id].filter((tx) => !childIds.includes(tx.id)),
+        ]),
+    );
 
     await fetch("/api/transactions", {
       method: "PUT",
@@ -426,16 +448,66 @@ const Home = () => {
 
     clearSelected();
 
+    // Update childRows: remove from old groups, add to new group
+    setChildRows((prev) => {
+      const next = { ...prev };
+      for (const oldId of oldGroupIds) {
+        if (next[oldId]) {
+          next[oldId] = next[oldId].filter((tx) => !childIds.includes(tx.id));
+        }
+      }
+      if (next[groupId]) {
+        const existing = next[groupId].filter((tx) => !childIds.includes(tx.id));
+        next[groupId] = [
+          ...existing,
+          ...selectedTxs.map((tx) => ({ ...tx, parentId: groupId })),
+        ];
+      }
+      return next;
+    });
+
+    // Recompute or delete old groups
+    for (const [oldId, remaining] of oldGroupRemainders) {
+      if (remaining.length === 0) {
+        await fetch(`/api/transactions/${oldId}`, { method: "DELETE" });
+        setExpandedIds((prev) => { const s = new Set(prev); s.delete(oldId); return s; });
+        setChildRows((prev) => { const next = { ...prev }; delete next[oldId]; return next; });
+        setPageRows((prev) => prev.filter((tx) => tx.id !== oldId));
+        setAllGroups((prev) => prev.filter((g) => g.id !== oldId));
+      } else {
+        const groupUpdates = computeGroupFields(remaining);
+        setPageRows((prev) =>
+          prev.map((tx) => (tx.id === oldId ? { ...tx, ...groupUpdates } : tx)),
+        );
+        setAllGroups((prev) =>
+          prev.map((g) => (g.id === oldId ? { ...g, ...groupUpdates } : g)),
+        );
+        await fetch(`/api/transactions/${oldId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(groupUpdates),
+        });
+      }
+    }
+
+    // Recompute new group summary
     if (childRows[groupId]) {
       const updatedChildren = [
-        ...childRows[groupId],
-        ...addedTransactions.map((tx) => ({ ...tx, parentId: groupId })),
+        ...childRows[groupId].filter((tx) => !childIds.includes(tx.id)),
+        ...selectedTxs.map((tx) => ({ ...tx, parentId: groupId })),
       ];
-      setChildRows((prev) => ({ ...prev, [groupId]: updatedChildren }));
-      await handleUpdateTransaction(
-        groupId,
-        computeGroupFields(updatedChildren),
+      const groupUpdates = computeGroupFields(updatedChildren);
+      setPageRows((prev) =>
+        prev.map((tx) => (tx.id === groupId ? { ...tx, ...groupUpdates } : tx)),
       );
+      setAllGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, ...groupUpdates } : g)),
+      );
+      await fetch(`/api/transactions/${groupId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(groupUpdates),
+      });
     }
 
     fetchPage({
@@ -487,12 +559,60 @@ const Home = () => {
   };
 
   const handleBulkDelete = async (ids: string[]) => {
+    const idSet = new Set(ids);
+
+    // Snapshot affected parent groups before mutation
+    const affectedGroups = new Map(
+      Object.entries(childRows)
+        .filter(([, children]) => children.some((c) => idSet.has(c.id)))
+        .map(([groupId, children]) => [
+          groupId,
+          children.filter((c) => !idSet.has(c.id)),
+        ]),
+    );
+
     await fetch("/api/transactions", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids }),
     });
+
     clearSelected();
+
+    // Remove deleted children from childRows
+    setChildRows((prev) => {
+      const next = { ...prev };
+      for (const groupId of Object.keys(next)) {
+        next[groupId] = next[groupId].filter((tx) => !idSet.has(tx.id));
+      }
+      return next;
+    });
+
+    // Recompute or delete parent groups whose children were deleted
+    for (const [groupId, remaining] of affectedGroups) {
+      if (idSet.has(groupId)) continue; // group itself was also deleted
+      if (remaining.length === 0) {
+        await fetch(`/api/transactions/${groupId}`, { method: "DELETE" });
+        setExpandedIds((prev) => { const s = new Set(prev); s.delete(groupId); return s; });
+        setChildRows((prev) => { const next = { ...prev }; delete next[groupId]; return next; });
+        setPageRows((prev) => prev.filter((tx) => tx.id !== groupId));
+        setAllGroups((prev) => prev.filter((g) => g.id !== groupId));
+      } else {
+        const groupUpdates = computeGroupFields(remaining);
+        setPageRows((prev) =>
+          prev.map((tx) => (tx.id === groupId ? { ...tx, ...groupUpdates } : tx)),
+        );
+        setAllGroups((prev) =>
+          prev.map((g) => (g.id === groupId ? { ...g, ...groupUpdates } : g)),
+        );
+        await fetch(`/api/transactions/${groupId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(groupUpdates),
+        });
+      }
+    }
+
     fetchPage({
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
@@ -504,9 +624,21 @@ const Home = () => {
     ids: string[],
     updates: Partial<Transaction>,
   ) => {
+    const idSet = new Set(ids);
     setPageRows((prev) =>
-      prev.map((tx) => (ids.includes(tx.id) ? { ...tx, ...updates } : tx)),
+      prev.map((tx) => (idSet.has(tx.id) ? { ...tx, ...updates } : tx)),
     );
+    setChildRows((prev) => {
+      const next = { ...prev };
+      for (const groupId of Object.keys(next)) {
+        if (next[groupId].some((tx) => idSet.has(tx.id))) {
+          next[groupId] = next[groupId].map((tx) =>
+            idSet.has(tx.id) ? { ...tx, ...updates } : tx,
+          );
+        }
+      }
+      return next;
+    });
     await fetch("/api/transactions", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -554,7 +686,7 @@ const Home = () => {
     <main className="h-screen flex flex-col overflow-hidden text-gray-900 dark:text-foreground font-sans">
       <div className="max-w-5xl w-full mx-auto px-6 py-12 flex flex-col flex-1 min-h-0">
         {/* Header Area */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
+        <header className="flex justify-between items-center gap-4 mb-8 shrink-0">
           {/* Main Logo */}
           <div className="flex items-center gap-2">
             <img
@@ -579,18 +711,18 @@ const Home = () => {
           <div className="flex items-center">
             <button
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-gray-900 hover:bg-gray-50 dark:text-foreground dark:hover:bg-[#424242] rounded transition-colors"
+              onClick={() => setShowAddRow(!showAddRow)}
+            >
+              {showAddRow ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              New
+            </button>
+            
+            <button
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-gray-900 hover:bg-gray-50 dark:text-foreground dark:hover:bg-[#424242] rounded transition-colors"
               onClick={() => setIsImportModalOpen(true)}
             >
               <Upload className="w-4 h-4" />
               Import
-            </button>
-
-            <button
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-gray-900 hover:bg-gray-50 dark:text-foreground dark:hover:bg-[#424242] rounded transition-colors"
-              onClick={() => setShowAddRow(true)}
-            >
-              <Plus className="w-4 h-4" />
-              New
             </button>
 
             <SettingsDrawer
@@ -599,13 +731,18 @@ const Home = () => {
                 localStorage.setItem("showTotalsRow", String(val));
                 setShowTotalsRow(val);
               }}
+              showGroupFilters={showGroupFilters}
+              onToggleGroupFilters={(val) => {
+                localStorage.setItem("showGroupFilters", String(val));
+                setShowGroupFilters(val);
+              }}
             />
           </div>
         </header>
 
         {/* Main Table */}
         <div
-          className={`mt-4 flex-1 min-h-0 flex flex-col transition-opacity ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
+          className={`mt-2 flex-1 min-h-0 flex flex-col transition-opacity ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
         >
           <TransactionTable
             transactions={displayRows}
@@ -651,6 +788,11 @@ const Home = () => {
             totalAmount={totalAmount}
             showTotalsRow={showTotalsRow}
             scrollToTopRef={scrollToTopRef}
+            groupFilters={groupFilters}
+            onGroupFilterChange={(groupId, categories) =>
+              setGroupFilters((prev) => ({ ...prev, [groupId]: categories }))
+            }
+            showGroupFilters={showGroupFilters}
           />
         </div>
         <div className="shrink-0">
