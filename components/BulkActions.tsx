@@ -203,7 +203,7 @@ const BulkActions = ({
                 onMouseEnter={() => setHoveredItem("source")}
               >
                 {sourceSuggestions.length > 0 ? (
-                  sourceSuggestions.map((s) => (
+                  sourceSuggestions.filter((source) => source !== "Mixed").map((s) => (
                     <button
                       key={s}
                       onClick={() => {

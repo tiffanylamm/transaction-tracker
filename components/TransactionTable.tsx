@@ -699,8 +699,8 @@ const TransactionTable = ({
   const isEditing = (id: string, field: EditableFields) =>
     editingCell?.id === id && editingCell?.field === field;
 
-  const thClass = `h-9 px-4 font-normal text-[11px] uppercase tracking-wider text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 select-none`;
-  const tdClass = `h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 whitespace-nowrap`;
+  const thClass = `h-9 px-4 font-normal text-[11px] uppercase tracking-wider text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 select-none`;
+  const tdClass = `h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 whitespace-nowrap`;
   const addInputClass = `w-full bg-transparent border-0 border-b border-transparent hover:border-gray-200 dark:hover:border-gray-700 focus:ring-0 p-1 text-[13px] text-gray-900 dark:text-foreground placeholder-gray-400 dark:placeholder-gray-500 transition-colors outline-none`;
   const editInputClass = `w-full bg-transparent border-0 outline-none text-[13px] text-gray-900 dark:text-foreground p-0 m-0 focus:ring-0 caret-gray-400 dark:caret-gray-500`;
 
@@ -747,17 +747,17 @@ const TransactionTable = ({
         ref={tableContainerRef}
         className="overflow-x-auto overflow-y-auto flex-1 min-h-0"
       >
-        <table className="w-full text-left border-collapse">
+        <table className="w-full min-w-274 text-left border-collapse table-fixed">
           <colgroup>
             <col className="w-8" />
-            <col className="w-32" />
+            <col className="w-34" />
             <col />
-            <col className="w-40" />
+            <col className="w-38" />
             <col className="w-32" />
             <col className="w-32" />
-            <col className="w-40" />
-            <col className="w-32" />
-            <col className="w-16" />
+            <col className="w-38" />
+            <col className="w-14" />
+            <col className="w-14" />
           </colgroup>
           {/* Header */}
           <thead className="sticky top-0 bg-white dark:bg-[#131314] z-2">
@@ -785,7 +785,7 @@ const TransactionTable = ({
                   </label>
                 )}
               </th>
-              <th className={`${thClass} relative w-32`}>
+              <th className={`${thClass} relative w-34`}>
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
@@ -807,7 +807,7 @@ const TransactionTable = ({
                 </div>
                 {openFilterCol === "date" && renderDateRangeDropdown()}
               </th>
-              <th className={`${thClass} relative min-w-64 max-w-80`}>
+              <th className={`${thClass} relative min-w-64`}>
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
@@ -829,7 +829,7 @@ const TransactionTable = ({
                 </div>
                 {openFilterCol === "description" && renderDescriptionDropdown()}
               </th>
-              <th className={`${thClass} relative w-40`}>
+              <th className={`${thClass} relative w-38`}>
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
@@ -897,7 +897,7 @@ const TransactionTable = ({
                 {openFilterCol === "status" &&
                   renderFilterDropdown("status", STATUSES)}
               </th>
-              <th className={`${thClass} relative w-40`}>
+              <th className={`${thClass} relative w-38`}>
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className="flex items-center cursor-pointer hover:text-gray-900 dark:hover:text-foreground transition-colors"
@@ -920,16 +920,19 @@ const TransactionTable = ({
                 {openFilterCol === "source" &&
                   renderFilterDropdown("source", allSources, true)}
               </th>
-              <th className={`${thClass} w-32`}>File</th>
-              <th className={`${thClass} w-16`} />
+              <th className={`${thClass} w-14`}>File</th>
+              <th className={`${thClass} w-14`} />
             </tr>
           </thead>
           <tbody>
             {/* Totals Row */}
             {showTotalsRow && (
               <tr className="border-b border-gray-100 dark:border-gray-800">
-                <td colSpan={4} />
-                <td className="h-9 px-4 text-[13px] font-medium whitespace-nowrap text-right">
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="h-9 px-4 text-[13px] font-medium whitespace-nowrap text-right border-r border-gray-100 dark:border-gray-800">
                   {(() => {
                     const isPositive = totalAmount >= 0;
                     const formatted = new Intl.NumberFormat("en-US", {
@@ -951,18 +954,18 @@ const TransactionTable = ({
                     );
                   })()}
                 </td>
-                <td />
-                <td />
-                <td />
-                <td />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
+                <td className="border-r border-gray-100 dark:border-gray-800" />
               </tr>
             )}
             {/* Add Transaction Row */}
             {showAddRow && (
               <tr className="border-b border-gray-100 dark:border-gray-800" onKeyDown={handleNewRowKeyDown}>
-                <td className="h-9 px-3" />
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800" />
                 {/* Date */}
-                <td className="h-9 px-3">
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800">
                   <input
                     type="date"
                     value={newTransaction.date}
@@ -977,7 +980,7 @@ const TransactionTable = ({
                   />
                 </td>
                 {/* Description */}
-                <td className="h-9 px-3">
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800">
                   <input
                     ref={newDescriptionRef}
                     type="text"
@@ -993,7 +996,7 @@ const TransactionTable = ({
                   />
                 </td>
                 {/* Category */}
-                <td className="h-9 px-3">
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800">
                   <input
                     type="text"
                     placeholder="Category..."
@@ -1009,7 +1012,7 @@ const TransactionTable = ({
                   />
                 </td>
                 {/* Amount */}
-                <td className="h-9 px-3">
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800">
                   <input
                     type="number"
                     placeholder="0.00"
@@ -1025,7 +1028,7 @@ const TransactionTable = ({
                   />
                 </td>
                 {/* Status */}
-                <td className="h-9 px-3">
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800">
                   <select
                     value={newTransaction.status}
                     className={addInputClass}
@@ -1044,7 +1047,7 @@ const TransactionTable = ({
                   </select>
                 </td>
                 {/* Source */}
-                <td className="h-9 px-3">
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800">
                   <input
                     type="text"
                     placeholder="Source..."
@@ -1060,7 +1063,7 @@ const TransactionTable = ({
                   />
                 </td>
                 {/* File — not available on new row */}
-                <td className="h-9 px-3" />
+                <td className="h-9 px-3 border-r border-gray-100 dark:border-gray-800" />
                 {/* Extra */}
                 <td className={tdClass}>
                   <button
@@ -1121,19 +1124,21 @@ const TransactionTable = ({
                       {/* Col 1: chevron for groups, checkbox for regular */}
                       <td className={`${tdClass} w-8 align-middle`}>
                         {tx.isGroup ? (
-                          <button
-                            onClick={() => onToggleExpand(tx.id)}
-                            className="flex text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-foreground transition-colors"
-                            aria-label={
-                              isExpanded ? "Collapse group" : "Expand group"
-                            }
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            ) : (
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            )}
-                          </button>
+                          <div className="flex items-center justify-center w-full h-full min-h-8">
+                            <button
+                              onClick={() => onToggleExpand(tx.id)}
+                              className="text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-foreground transition-colors"
+                              aria-label={
+                                isExpanded ? "Collapse group" : "Expand group"
+                              }
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
                         ) : (
                           <label
                             className="flex items-center justify-center w-full h-full min-h-8 cursor-pointer select-none"
@@ -1195,7 +1200,7 @@ const TransactionTable = ({
 
                       {/* Description */}
                       <td
-                        className={`h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium max-w-80`}
+                        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium`}
                         onClick={() =>
                           !isEditing(tx.id, "description") &&
                           startEditing(
@@ -1269,7 +1274,7 @@ const TransactionTable = ({
 
                       {/* Amount */}
                       <td
-                        className={`h-9 px-4 text-[13px] border-b border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium text-right`}
+                        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium text-right`}
                         onClick={() =>
                           !isEditing(tx.id, "amount") &&
                           startEditing(
@@ -1414,9 +1419,9 @@ const TransactionTable = ({
                         <>
                           {/* Filter bar */}
                           {showGroupFilters && (
-                            <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1a1a1a]">
+                            <tr className="border-b border-gray-100 dark:border-gray-800 bg-transparent">
                               {/* chevron col — x clear */}
-                              <td className="py-1.5 w-8 align-middle text-center">
+                              <td className="py-1.5 w-8 align-middle text-center border-r border-gray-100 dark:border-gray-800">
                                 {isFiltered && (
                                   <button
                                     onClick={() => {
@@ -1431,9 +1436,9 @@ const TransactionTable = ({
                                 )}
                               </td>
                               {/* date col — empty */}
-                              <td className="py-1.5" />
+                              <td className="py-1.5 border-r border-gray-100 dark:border-gray-800" />
                               {/* description col */}
-                              <td className="px-4 py-1.5">
+                              <td className="px-4 py-1.5 border-r border-gray-100 dark:border-gray-800">
                                 <input
                                   type="text"
                                   placeholder="Search..."
@@ -1445,7 +1450,7 @@ const TransactionTable = ({
                                 />
                               </td>
                               {/* category col */}
-                              <td className="px-4 py-1.5">
+                              <td className="px-4 py-1.5 border-r border-gray-100 dark:border-gray-800">
                                 <select
                                   value={activeFilters.length === 0 ? "__all__" : activeFilters[0]}
                                   onChange={(e) =>
@@ -1462,7 +1467,11 @@ const TransactionTable = ({
                                 </select>
                               </td>
                               {/* remaining cols */}
-                              <td colSpan={5} />
+                              <td className="border-r border-gray-100 dark:border-gray-800" />
+                              <td className="border-r border-gray-100 dark:border-gray-800" />
+                              <td className="border-r border-gray-100 dark:border-gray-800" />
+                              <td className="border-r border-gray-100 dark:border-gray-800" />
+                              <td className="border-r border-gray-100 dark:border-gray-800" />
                             </tr>
                           )}
 
@@ -1547,7 +1556,7 @@ const TransactionTable = ({
 
                           {/* Description */}
                           <td
-                            className={`${tdClass} dark:text-foreground max-w-80`}
+                            className={`${tdClass} dark:text-foreground`}
                             onClick={() =>
                               !isEditing(child.id, "description") &&
                               startEditing(
