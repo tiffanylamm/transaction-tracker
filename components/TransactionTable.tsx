@@ -135,6 +135,8 @@ interface TransactionTableProps {
   groupFilters: Record<string, string[]>;
   onGroupFilterChange: (groupId: string, categories: string[]) => void;
   showGroupFilters: boolean;
+  onToggleAbsSort: () => void;
+  absValue: boolean;
 }
 
 const localToday = () => {
@@ -204,6 +206,8 @@ const TransactionTable = ({
   groupFilters,
   onGroupFilterChange,
   showGroupFilters,
+  onToggleAbsSort,
+  absValue,
 }: TransactionTableProps) => {
   const emptyNewTransaction: Partial<Transaction> = {
     date: localToday(),
@@ -550,6 +554,26 @@ const TransactionTable = ({
               className={dropdownInputClass}
             />
           </div>
+        </div>
+        <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <span className="text-[11px] text-gray-500 dark:text-gray-400">Sort by abs value</span>
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onToggleAbsSort()}
+            className={`relative w-7 h-4 rounded-full transition-colors ${
+              absValue
+                ? "bg-blue-500"
+                : "bg-gray-200 dark:bg-gray-700"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0 w-3 h-3 rounded-full bg-white transition-transform ${
+                absValue
+                  ? "translate-x-3.5"
+                  : "translate-x-0.5"
+              }`}
+            />
+          </button>
         </div>
       </div>
     );
@@ -1186,7 +1210,7 @@ const TransactionTable = ({
                         openFilterCol === "amount" ? null : "amount",
                       );
                     }}
-                    className={`p-0.5 rounded transition-colors ${textFilters.amountMin || textFilters.amountMax ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
+                    className={`p-0.5 rounded transition-colors ${textFilters.amountMin || textFilters.amountMax || (absValue) ? "text-blue-500 dark:text-blue-400" : "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"}`}
                   >
                     <ListFilter className="w-3 h-3" />
                   </button>

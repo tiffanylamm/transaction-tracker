@@ -51,6 +51,7 @@ const Home = () => {
   const [showAddRow, setShowAddRow] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [absValue, setAbsValue] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([]));
   const [selectedMap, setSelectedMap] = useState<Map<string, Transaction>>(
     new Map(),
@@ -102,6 +103,7 @@ const Home = () => {
       page: number;
       sortBy: string | null;
       sortDir: string | null;
+      sortAbs?: boolean;
     }) => {
       if (!session?.user?.id) return;
       setIsLoading(true);
@@ -111,6 +113,7 @@ const Home = () => {
       if (opts.sortBy && opts.sortDir) {
         params.set("sortBy", opts.sortBy);
         params.set("sortDir", opts.sortDir);
+        if (opts.sortAbs) params.set("sortAbs", "true");
       }
 
       const tf = textFiltersRef.current;
@@ -172,6 +175,7 @@ const Home = () => {
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -179,6 +183,7 @@ const Home = () => {
     currentPage,
     debouncedTextFilters,
     sortConfig,
+    absValue,
     columnFilters,
   ]);
 
@@ -202,6 +207,11 @@ const Home = () => {
       }
       return null;
     });
+    setCurrentPage(1);
+  };
+
+  const handleToggleAbsSort = () => {
+    setAbsValue((v) => !v);
     setCurrentPage(1);
   };
 
@@ -333,6 +343,7 @@ const Home = () => {
       page: nextPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
     fetchMetadata();
 
@@ -446,6 +457,7 @@ const Home = () => {
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
     setPinnedRow(createdGroup);
     scrollToTopRef.current?.();
@@ -561,6 +573,7 @@ const Home = () => {
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
   };
 
@@ -591,6 +604,7 @@ const Home = () => {
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
 
     setChildRows((prev) => {
@@ -673,7 +687,10 @@ const Home = () => {
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
+
+    fetchMetadata();
   };
 
   const handleBulkUpdate = async (
@@ -705,6 +722,7 @@ const Home = () => {
       page: currentPage,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
   };
 
@@ -733,6 +751,7 @@ const Home = () => {
       page: 1,
       sortBy: sortConfig?.key ?? null,
       sortDir: sortConfig?.direction ?? null,
+      sortAbs: absValue,
     });
   };
 
@@ -809,6 +828,8 @@ const Home = () => {
             allTransactions={allTransactions}
             sortConfig={sortConfig}
             onSort={handleSort}
+            onToggleAbsSort={handleToggleAbsSort}
+            absValue={absValue}
             onDelete={handleDeleteTransaction}
             onUpdate={handleUpdateTransaction}
             showAddRow={showAddRow}
