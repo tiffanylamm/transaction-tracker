@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ListFilter } from "lucide-react";
 import { Transaction, SortConfig, STATUSES } from "@/types/transaction";
 
-interface TransactionTableHeaderProps {
+interface TableHeaderProps {
   transactions: Transaction[];
   sortConfig: SortConfig | null;
   onSort: (key: keyof Transaction) => void;
@@ -31,7 +31,7 @@ interface TransactionTableHeaderProps {
   absValue: boolean;
 }
 
-const TransactionTableHeader = ({
+const TableHeader = ({
   transactions,
   sortConfig,
   onSort,
@@ -39,14 +39,14 @@ const TransactionTableHeader = ({
   onFilterSelectChange,
   onFilterTextChange,
   textFilters,
-  allCategories, 
+  allCategories,
   allSources,
   selectedIdsMap,
   onSelectAll,
   onToggleSelect,
   onToggleAbsSort,
   absValue,
-}: TransactionTableHeaderProps) => {
+}: TableHeaderProps) => {
   const [openFilterCol, setOpenFilterCol] = useState<
     "date" | "description" | "amount" | "category" | "status" | "source" | null
   >(null);
@@ -491,4 +491,4 @@ const TransactionTableHeader = ({
   );
 };
 
-export default TransactionTableHeader;
+export default TableHeader;

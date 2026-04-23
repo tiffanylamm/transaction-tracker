@@ -2,16 +2,16 @@ import React, { useEffect, useMemo } from "react";
 import { useState, useRef } from "react";
 import { Layers, X } from "lucide-react";
 import { Transaction, SortConfig } from "@/types/transaction";
-import BulkActions from "./BulkActions";
-import ContextMenu from "./ContextMenu";
-import TransactionTableHeader from "./TransactionTableHeader";
-import AddTransactionRow from "./AddTransactionRow";
+import BulkActions from "./TransactionTable/BulkActions";
+import ContextMenu from "./TransactionTable/ContextMenu";
+import TableHeader from "./TransactionTable/TableHeader";
+import AddTransactionRow from "./TransactionTable/AddTransactionRow";
 import useEditingCell from "@/hooks/useEditingCell";
 import useDriveAttach from "@/hooks/useDriveAttach";
-import TransactionTableTopLevelRow from "./TransactionTableTopLevelRow";
-import ChildRow from "./ChildRow";
-import GroupFilterBar from "./GroupFilterBar";
-import TotalAmountRow from "./TotalAmountRow";
+import TopLevelRow from "./TransactionTable/TopLevelRow";
+import ChildRow from "./TransactionTable/ChildRow";
+import GroupFilterBar from "./TransactionTable/GroupFilterBar";
+import TotalAmountRow from "./TransactionTable/TotalAmountRow";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -227,7 +227,7 @@ const TransactionTable = ({
             <col className="w-14" />
           </colgroup>
           {/* Header */}
-          <TransactionTableHeader
+          <TableHeader
             transactions={transactions}
             sortConfig={sortConfig}
             onSort={onSort}
@@ -308,7 +308,7 @@ const TransactionTable = ({
                 return (
                   <React.Fragment key={tx.id}>
                     {/* Parent / regular row */}
-                    <TransactionTableTopLevelRow
+                    <TopLevelRow
                       key={tx.id}
                       tx={tx}
                       isExpanded={isExpanded}

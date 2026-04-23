@@ -10,9 +10,9 @@ import { Transaction, Status, STATUSES } from "@/types/transaction";
 import { EditableField } from "@/hooks/useEditingCell";
 import { formatDate, formatAmount } from "@/lib/formatters";
 import DriveFileCell from "./DriveFileCell";
-import StatusBadge from "./StatusBadge";
+import StatusBadge from "../StatusBadge";
 
-interface TransactionTableTopLevelRowProps {
+interface TopLevelRowProps {
   tx: Transaction;
   isExpanded: boolean;
   isSelected: boolean;
@@ -49,7 +49,7 @@ interface TransactionTableTopLevelRowProps {
   >;
 }
 
-const TransactionTableTopLevelRow = ({
+const TopLevelRow = ({
   tx,
   isExpanded,
   isSelected,
@@ -76,7 +76,7 @@ const TransactionTableTopLevelRow = ({
   handleKeyDown,
   setEditValue,
   setEditingCell,
-}: TransactionTableTopLevelRowProps) => {
+}: TopLevelRowProps) => {
   const tdClass = `h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 whitespace-nowrap`;
   const editInputClass = `w-full bg-transparent border-0 outline-none text-[13px] text-gray-900 dark:text-foreground p-0 m-0 focus:ring-0 caret-gray-400 dark:caret-gray-500`;
 
@@ -350,4 +350,4 @@ const TransactionTableTopLevelRow = ({
   );
 };
 
-export default TransactionTableTopLevelRow;
+export default TopLevelRow;

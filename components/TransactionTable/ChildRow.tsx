@@ -10,8 +10,7 @@ import { Transaction, Status, STATUSES } from "@/types/transaction";
 import { EditableField } from "@/hooks/useEditingCell";
 import { formatDate, formatAmount } from "@/lib/formatters";
 import DriveFileCell from "./DriveFileCell";
-import StatusBadge from "./StatusBadge";
-
+import StatusBadge from "../StatusBadge";
 interface ChildRowProps {
   child: Transaction;
   allTransactions: Transaction[];
