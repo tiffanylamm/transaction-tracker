@@ -17,6 +17,8 @@ import TransactionTableHeader from "./TransactionTableHeader";
 import DriveFile, { AttachButton } from "./DriveFileCell";
 import AddTransactionRow from "./AddTransactionRow";
 import useEditingCell from "@/hooks/useEditingCell";
+import { formatDate, formatAmount } from "@/lib/formatters";
+import useDriveAttach from "@/hooks/useDriveAttach";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -69,22 +71,7 @@ interface TransactionTableProps {
   absValue: boolean;
 }
 
-function buildReceiptName(
-  tx: { date: string; category: string | null; description: string },
-  ext: string,
-): string {
-  const sanitize = (s: string) => s.replace(/[^\w]/g, "");
-  const titleCase = (s: string) =>
-    s
-      .split(/\s+/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join("");
-  const parts: string[] = [tx.date, "Receipt"];
-  if (tx.category && tx.category !== "None") parts.push(sanitize(tx.category));
-  if (tx.description) parts.push(sanitize(titleCase(tx.description)));
-  const base = parts.join("_");
-  return ext ? `${base}.${ext}` : base;
-}
+
 
 const TransactionTable = ({
   transactions,
@@ -142,20 +129,6 @@ const TransactionTable = ({
   const lastClickedIdRef = useRef<string | null>(null);
   const shiftKeyRef = useRef(false);
 
-  const attachingTxIdRef = useRef<{
-    id: string;
-    date: string;
-    category: string | null;
-    description: string;
-  } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingIds, setUploadingIds] = useState<Set<string>>(new Set());
-  const [driveConnected, setDriveConnected] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch("/api/drive/token").then((r) => setDriveConnected(r.ok));
-  }, []);
-
   const {
     editingCell,
     editValue,
@@ -168,62 +141,14 @@ const TransactionTable = ({
     setEditingCell,
   } = useEditingCell({ allTransactions, onUpdate });
 
-  const handleAttach = (
-    tx: Pick<Transaction, "id" | "date" | "category" | "description">,
-  ) => {
-    if (!driveConnected) {
-      alert(
-        "Google Drive is not connected. Go to Settings → Integrations → Connect.",
-      );
-      return;
-    }
-    attachingTxIdRef.current = {
-      id: tx.id,
-      date: tx.date,
-      category: tx.category,
-      description: tx.description,
-    };
-    fileInputRef.current?.click();
-  };
+  const {
+    driveConnected,
+    uploadingIds,
+    fileInputRef,
+    handleAttach,
+    handleFileSelected,
+  } = useDriveAttach({ onUpdate });
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const txMeta = attachingTxIdRef.current;
-    e.target.value = "";
-    if (!file || !txMeta) return;
-
-    const txId = txMeta.id;
-    const ext = file.name.includes(".") ? file.name.split(".").pop()! : "";
-    const renamedFile = new File([file], buildReceiptName(txMeta, ext), {
-      type: file.type,
-    });
-
-    setUploadingIds((prev) => new Set([...prev, txId]));
-    try {
-      const formData = new FormData();
-      formData.append("file", renamedFile);
-      const res = await fetch("/api/drive/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error ?? "Upload failed");
-        return;
-      }
-      const { id } = await res.json();
-      onUpdate(txId, { driveFileId: id });
-    } catch {
-      alert("Upload failed");
-    } finally {
-      setUploadingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(txId);
-        return next;
-      });
-      attachingTxIdRef.current = null;
-    }
-  };
   const pendingFocusIdRef = useRef<string | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -273,32 +198,6 @@ const TransactionTable = ({
     if (!canGroup) return;
     const newGroupId = await onCreateGroup("New Group");
     pendingFocusIdRef.current = newGroupId;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-    return adjustedDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatAmount = (amount: number) => {
-    const isIncome = amount > 0;
-    const formatted = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    }).format(Math.abs(amount));
-    return (
-      <span>
-        {isIncome ? "+" : "-"}
-        {formatted}
-      </span>
-    );
   };
 
   const tdClass = `h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 whitespace-nowrap`;
