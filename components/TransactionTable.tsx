@@ -318,6 +318,7 @@ const TransactionTable = ({
                       filteredChildCount={filteredChildren.length}
                       onToggleExpand={onToggleExpand}
                       onToggleSelect={onToggleSelect}
+                      onSelectAll={onSelectAll}
                       onDelete={onDelete}
                       onUpdate={onUpdate}
                       onContextMenu={handleRowContextMenu}

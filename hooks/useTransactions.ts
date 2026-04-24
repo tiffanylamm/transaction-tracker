@@ -255,7 +255,11 @@ export function useTransactions() {
   const handleToggleSelect = (tx: Transaction) =>
     setSelectedMap((prev) => {
       const next = new Map(prev);
-      next.has(tx.id) ? next.delete(tx.id) : next.set(tx.id, tx);
+      if (next.has(tx.id)) {
+        next.delete(tx.id);
+      } else {
+        next.set(tx.id, tx);
+      }
       return next;
     });
 
@@ -295,7 +299,7 @@ export function useTransactions() {
     id: string,
     updates: Partial<Transaction>,
   ) => {
-    // Optimistically update all local state before awaiting the network call
+    // Optimistically update local state before awaiting the network call
     if (updates.amount !== undefined) {
       const existing =
         pageRows.find((tx) => tx.id === id) ??
@@ -312,9 +316,11 @@ export function useTransactions() {
     setPageRows((prev) =>
       prev.map((tx) => (tx.id === id ? { ...tx, ...updates } : tx)),
     );
+
     setAllGroups((prev) =>
       prev.map((g) => (g.id === id ? { ...g, ...updates } : g)),
     );
+
     setChildRows((prev) => {
       const next = { ...prev };
       for (const groupId of Object.keys(next)) {
@@ -324,56 +330,54 @@ export function useTransactions() {
       }
       return next;
     });
+    
     setPinnedRow((prev) => (prev?.id === id ? { ...prev, ...updates } : prev));
 
     if (updates.category !== undefined || updates.source !== undefined) {
       fetchMetadata();
     }
 
-    let currentId = id;
-    let currentUpdates = updates;
-
-    while (true) {
-      const parentGroupId = parentMap.get(currentId) ?? null;
-
-      if (!parentGroupId) break;
-
-      const updatedChildren = childRows[parentGroupId].map((tx) =>
-        tx.id === currentId ? { ...tx, ...currentUpdates } : tx,
-      );
-      const groupUpdates = computeGroupFields(updatedChildren);
-
-      setPageRows((prev) =>
-        prev.map((tx) =>
-          tx.id === parentGroupId ? { ...tx, ...groupUpdates } : tx,
-        ),
-      );
-      setAllGroups((prev) =>
-        prev.map((g) =>
-          g.id === parentGroupId ? { ...g, ...groupUpdates } : g,
-        ),
-      );
-      setPinnedRow((prev) =>
-        prev?.id === parentGroupId ? { ...prev, ...groupUpdates } : prev,
-      );
-      fetch(`/api/transactions/${parentGroupId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(groupUpdates),
-      });
-
-      currentId = parentGroupId;
-      currentUpdates = groupUpdates;
-    }
-
-    await fetch(`/api/transactions/${id}`, {
+    const res = await fetch(`/api/transactions/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
+    const { ancestors } = await res.json();
+
+    // Apply server-computed ancestor summaries (amount comes back as string from DB)
+    for (const ancestor of ancestors as Array<Record<string, unknown>>) {
+      const groupUpdates = {
+        date: ancestor.date as string,
+        amount: Number(ancestor.amount),
+        status: ancestor.status as Transaction["status"],
+        source: ancestor.source as string | null,
+      };
+      const ancestorId = ancestor.id as string;
+      setPageRows((prev) =>
+        prev.map((tx) => (tx.id === ancestorId ? { ...tx, ...groupUpdates } : tx)),
+      );
+      setAllGroups((prev) =>
+        prev.map((g) => (g.id === ancestorId ? { ...g, ...groupUpdates } : g)),
+      );
+      setChildRows((prev) => {
+        const next = { ...prev };
+        for (const groupId of Object.keys(next)) {
+          next[groupId] = next[groupId].map((tx) =>
+            tx.id === ancestorId ? { ...tx, ...groupUpdates } : tx,
+          );
+        }
+        return next;
+      });
+      setPinnedRow((prev) =>
+        prev?.id === ancestorId ? { ...prev, ...groupUpdates } : prev,
+      );
+    }
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    const parentGroupId = parentMap.get(id) ?? null;
+    const grandparentId = parentGroupId ? (parentMap.get(parentGroupId) ?? null) : null;
+
     await fetch(`/api/transactions/${id}`, { method: "DELETE" });
 
     setExpandedIds((prev) => {
@@ -385,10 +389,60 @@ export function useTransactions() {
     setChildRows((prev) => {
       const next = { ...prev };
       delete next[id];
+      if (parentGroupId && next[parentGroupId]) {
+        next[parentGroupId] = next[parentGroupId].filter((tx) => tx.id !== id);
+      }
       return next;
     });
 
     if (pinnedRow?.id === id) setPinnedRow(null);
+
+    if (parentGroupId) {
+      const remaining = (childRows[parentGroupId] ?? []).filter((tx) => tx.id !== id);
+
+      if (remaining.length === 0) {
+        await fetch(`/api/transactions/${parentGroupId}`, { method: "DELETE" });
+        setExpandedIds((prev) => {
+          const s = new Set(prev);
+          s.delete(parentGroupId);
+          return s;
+        });
+        setChildRows((prev) => {
+          const next = { ...prev };
+          delete next[parentGroupId];
+          if (grandparentId && next[grandparentId]) {
+            next[grandparentId] = next[grandparentId].filter((tx) => tx.id !== parentGroupId);
+          }
+          return next;
+        });
+        setPageRows((prev) => prev.filter((tx) => tx.id !== parentGroupId));
+        setAllGroups((prev) => prev.filter((g) => g.id !== parentGroupId));
+      } else {
+        const groupUpdates = computeGroupFields(remaining);
+        setPageRows((prev) =>
+          prev.map((tx) => (tx.id === parentGroupId ? { ...tx, ...groupUpdates } : tx)),
+        );
+        setAllGroups((prev) =>
+          prev.map((g) => (g.id === parentGroupId ? { ...g, ...groupUpdates } : g)),
+        );
+        if (grandparentId) {
+          setChildRows((prev) => {
+            const next = { ...prev };
+            if (next[grandparentId]) {
+              next[grandparentId] = next[grandparentId].map((tx) =>
+                tx.id === parentGroupId ? { ...tx, ...groupUpdates } : tx,
+              );
+            }
+            return next;
+          });
+        }
+        await fetch(`/api/transactions/${parentGroupId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(groupUpdates),
+        });
+      }
+    }
 
     const isLastOnPage = pageRows.length === 1 && currentPage > 1;
     const nextPage = isLastOnPage ? currentPage - 1 : currentPage;
@@ -504,14 +558,19 @@ export function useTransactions() {
       ),
     ].filter((id) => id !== groupId);
 
-    const oldGroupRemainders = new Map(
-      oldGroupIds
-        .filter((id) => childRows[id])
-        .map((id) => [
-          id,
-          childRows[id].filter((tx) => !childIds.includes(tx.id)),
-        ]),
+    // Build remaining-children map for old groups — fetch from API if not loaded locally
+    const oldGroupRemaindersEntries = await Promise.all(
+      oldGroupIds.map(async (id) => {
+        const existing = childRows[id];
+        if (existing) {
+          return [id, existing.filter((tx) => !childIds.includes(tx.id))] as const;
+        }
+        const res = await fetch(`/api/transactions?parentId=${id}`);
+        const fetched: Transaction[] = await res.json();
+        return [id, fetched.filter((tx) => !childIds.includes(tx.id))] as const;
+      }),
     );
+    const oldGroupRemainders = new Map(oldGroupRemaindersEntries);
 
     await fetch("/api/transactions", {
       method: "PUT",
@@ -569,6 +628,7 @@ export function useTransactions() {
 
     // Recompute or delete old groups
     for (const [oldId, remaining] of oldGroupRemainders) {
+      const oldParentId = parentMap.get(oldId) ?? null;
       if (remaining.length === 0) {
         await fetch(`/api/transactions/${oldId}`, { method: "DELETE" });
         setExpandedIds((prev) => {
@@ -579,6 +639,9 @@ export function useTransactions() {
         setChildRows((prev) => {
           const next = { ...prev };
           delete next[oldId];
+          if (oldParentId && next[oldParentId]) {
+            next[oldParentId] = next[oldParentId].filter((tx) => tx.id !== oldId);
+          }
           return next;
         });
         setPageRows((prev) => prev.filter((tx) => tx.id !== oldId));
@@ -591,6 +654,17 @@ export function useTransactions() {
         setAllGroups((prev) =>
           prev.map((g) => (g.id === oldId ? { ...g, ...groupUpdates } : g)),
         );
+        if (oldParentId) {
+          setChildRows((prev) => {
+            const next = { ...prev };
+            if (next[oldParentId]) {
+              next[oldParentId] = next[oldParentId].map((tx) =>
+                tx.id === oldId ? { ...tx, ...groupUpdates } : tx,
+              );
+            }
+            return next;
+          });
+        }
         await fetch(`/api/transactions/${oldId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -599,25 +673,34 @@ export function useTransactions() {
       }
     }
 
-    // Recompute new group summary
-    if (childRows[groupId]) {
-      const updatedChildren = [
-        ...childRows[groupId].filter((tx) => !childIds.includes(tx.id)),
-        ...selectedTxs.map((tx) => ({ ...tx, parentId: groupId })),
-      ];
-      const groupUpdates = computeGroupFields(updatedChildren);
-      setPageRows((prev) =>
-        prev.map((tx) => (tx.id === groupId ? { ...tx, ...groupUpdates } : tx)),
-      );
-      setAllGroups((prev) =>
-        prev.map((g) => (g.id === groupId ? { ...g, ...groupUpdates } : g)),
-      );
-      await fetch(`/api/transactions/${groupId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(groupUpdates),
-      });
-    }
+    // Recompute new group summary — always fetch fresh children so collapsed groups update correctly
+    const newChildrenRes = await fetch(`/api/transactions?parentId=${groupId}`);
+    const newChildren: Transaction[] = await newChildrenRes.json();
+    const groupUpdates = computeGroupFields(newChildren);
+    const targetParentId = parentMap.get(groupId) ?? null;
+    setPageRows((prev) =>
+      prev.map((tx) => (tx.id === groupId ? { ...tx, ...groupUpdates } : tx)),
+    );
+    setAllGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, ...groupUpdates } : g)),
+    );
+    setChildRows((prev) => {
+      const next = { ...prev };
+      if (next[groupId]) {
+        next[groupId] = newChildren;
+      }
+      if (targetParentId && next[targetParentId]) {
+        next[targetParentId] = next[targetParentId].map((tx) =>
+          tx.id === groupId ? { ...tx, ...groupUpdates } : tx,
+        );
+      }
+      return next;
+    });
+    await fetch(`/api/transactions/${groupId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(groupUpdates),
+    });
 
     refetchCurrentPage();
   };

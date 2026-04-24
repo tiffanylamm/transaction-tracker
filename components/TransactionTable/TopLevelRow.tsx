@@ -21,6 +21,7 @@ interface TopLevelRowProps {
   filteredChildCount: number;
   onToggleExpand: (id: string) => void;
   onToggleSelect: (tx: Transaction) => void;
+  onSelectAll: (txs: Transaction[]) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Transaction>) => void;
   onContextMenu: (e: React.MouseEvent, tx: Transaction) => void;
@@ -58,6 +59,7 @@ const TopLevelRow = ({
   filteredChildCount,
   onToggleExpand,
   onToggleSelect,
+  onSelectAll,
   onDelete,
   onUpdate,
   onContextMenu,
@@ -109,10 +111,7 @@ const TopLevelRow = ({
                 if (lastIdx !== -1) {
                   const from = Math.min(lastIdx, currIdx);
                   const to = Math.max(lastIdx, currIdx);
-                  // Signal to parent to select range — handled via onToggleSelect
-                  for (const t of transactions.slice(from, to + 1)) {
-                    onToggleSelect(t);
-                  }
+                  onSelectAll(transactions.slice(from, to + 1));
                   return;
                 }
               }
@@ -126,7 +125,7 @@ const TopLevelRow = ({
 
       {/* Date */}
       <td
-        className={`${tdClass}`}
+        className={`${tdClass} ${tx.isGroup ? "cursor-not-allowed" : "cursor-text"}`}
         onClick={() =>
           !isEditing(tx.id, "date") &&
           startEditing(tx.id, "date", tx.date, tx.isGroup)
@@ -155,7 +154,7 @@ const TopLevelRow = ({
 
       {/* Description */}
       <td
-        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium`}
+        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium cursor-text`}
         onClick={() =>
           !isEditing(tx.id, "description") &&
           startEditing(tx.id, "description", tx.description, tx.isGroup)
@@ -207,7 +206,7 @@ const TopLevelRow = ({
 
       {/* Category */}
       <td
-        className={tdClass}
+        className={`${tdClass} cursor-text`}
         onClick={() =>
           !isEditing(tx.id, "category") &&
           startEditing(tx.id, "category", tx.category ?? "", tx.isGroup)
@@ -231,7 +230,7 @@ const TopLevelRow = ({
 
       {/* Amount */}
       <td
-        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium text-right`}
+        className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground font-medium text-right ${tx.isGroup ? "cursor-not-allowed" : "cursor-text"}`}
         onClick={() =>
           !isEditing(tx.id, "amount") &&
           startEditing(tx.id, "amount", tx.amount, tx.isGroup)
@@ -259,7 +258,7 @@ const TopLevelRow = ({
 
       {/* Status */}
       <td
-        className={`${tdClass}`}
+        className={`${tdClass} ${tx.isGroup ? "cursor-not-allowed" : "cursor-pointer"}`}
         onClick={() =>
           !isEditing(tx.id, "status") &&
           startEditing(tx.id, "status", tx.status, tx.isGroup)
@@ -289,7 +288,7 @@ const TopLevelRow = ({
 
       {/* Source */}
       <td
-        className={tdClass}
+        className={`${tdClass} ${tx.isGroup ? "cursor-not-allowed" : "cursor-text"}`}
         onClick={() =>
           !isEditing(tx.id, "source") &&
           startEditing(tx.id, "source", tx.source ?? "", tx.isGroup)

@@ -4,6 +4,25 @@ import { transactions } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { STATUSES, UPDATABLE_FIELDS } from "@/types/transaction";
 
+type DbRow = typeof transactions.$inferSelect;
+
+// Recomputes group summary fields from its DB children rows
+function computeSummary(children: DbRow[]) {
+  const date = children.reduce(
+    (e, c) => (c.date < e ? c.date : e),
+    children[0].date,
+  );
+  const amount = String(children.reduce((s, c) => s + Number(c.amount), 0));
+  const priority: Record<string, number> = { Owed: 3, Refunding: 2, Completed: 1 };
+  const status = children.reduce(
+    (top, c) => ((priority[c.status] ?? 0) > (priority[top] ?? 0) ? c.status : top),
+    children[0].status,
+  );
+  const srcs = [...new Set(children.map((c) => c.source).filter(Boolean))] as string[];
+  const source = srcs.length === 0 ? null : srcs.length === 1 ? srcs[0] : "Mixed";
+  return { date, amount, status, source };
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -61,7 +80,46 @@ export async function PUT(
 
   if (!row.length)
     return Response.json({ error: "Not found" }, { status: 404 });
-  return Response.json(row);
+
+  // Walk up the parentId chain and recompute each ancestor group's summary
+  const ancestors: DbRow[] = [];
+  let currentId = id;
+  while (true) {
+    const [current] = await db
+      .select({ parentId: transactions.parentId })
+      .from(transactions)
+      .where(
+        and(eq(transactions.id, currentId), eq(transactions.userId, session.user.id)),
+      );
+    if (!current?.parentId) break;
+
+    const children = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.parentId, current.parentId),
+          eq(transactions.userId, session.user.id),
+        ),
+      );
+    if (children.length === 0) break;
+
+    const summary = computeSummary(children);
+    const [updatedAncestor] = await db
+      .update(transactions)
+      .set(summary)
+      .where(
+        and(
+          eq(transactions.id, current.parentId),
+          eq(transactions.userId, session.user.id),
+        ),
+      )
+      .returning();
+    ancestors.push(updatedAncestor);
+    currentId = current.parentId;
+  }
+
+  return Response.json({ updated: row[0], ancestors });
 }
 
 export async function DELETE(

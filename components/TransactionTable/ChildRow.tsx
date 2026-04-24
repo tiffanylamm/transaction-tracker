@@ -27,6 +27,7 @@ interface ChildRowProps {
   onContextMenu: (e: React.MouseEvent, tx: Transaction) => void;
   uploadingIds: Set<string>;
   onAttach: (tx: Transaction) => void;
+  depth?: number;
   shiftKeyRef: React.RefObject<boolean>;
   lastClickedIdRef: React.RefObject<string | null>;
   // Editing — passed from useEditingCell in parent
@@ -64,6 +65,7 @@ const ChildRow = ({
   onContextMenu,
   uploadingIds,
   onAttach,
+  depth = 2,
   shiftKeyRef,
   lastClickedIdRef,
   editingCell,
@@ -126,7 +128,7 @@ const ChildRow = ({
         </td>
 
         {/* Date */}
-        <td className={`${tdClass}`}>
+        <td className={`${tdClass} ${child.isGroup ? "cursor-not-allowed" : "cursor-text"}`}>
           <div className="flex items-center gap-1.5">
             {isEditing(child.id, "date") ? (
               <input
@@ -146,7 +148,6 @@ const ChildRow = ({
               />
             ) : (
               <span
-                className="cursor-text"
                 onClick={() =>
                   !isEditing(child.id, "date") &&
                   startEditing(child.id, "date", child.date, child.isGroup)
@@ -160,7 +161,8 @@ const ChildRow = ({
 
         {/* Description */}
         <td
-          className={`${tdClass} dark:text-foreground`}
+          className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground cursor-text`}
+          style={{ paddingLeft: `${Math.min(depth, 4)}rem` }}
           onClick={() =>
             !isEditing(child.id, "description") &&
             startEditing(
@@ -192,7 +194,7 @@ const ChildRow = ({
                     e.stopPropagation();
                     onToggleExpand(child.id);
                   }}
-                  className="text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-foreground transition-colors shrink-0"
+                  className="px-1 py-1 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-foreground transition-colors shrink-0 cursor-pointer"
                   aria-label={isExpanded ? "Collapse group" : "Expand group"}
                 >
                   {isExpanded ? (
@@ -208,7 +210,7 @@ const ChildRow = ({
 
         {/* Category */}
         <td
-          className={`${tdClass}`}
+          className={`${tdClass} cursor-text`}
           onClick={() =>
             !isEditing(child.id, "category") &&
             startEditing(
@@ -231,15 +233,13 @@ const ChildRow = ({
               className={editInputClass}
             />
           ) : (
-            <span className="cursor-text block py-px">
-              {child.category ?? ""}
-            </span>
+            <span className="block py-px">{child.category ?? ""}</span>
           )}
         </td>
 
         {/* Amount */}
         <td
-          className={`${tdClass} text-right`}
+          className={`h-9 px-4 text-[13px] border-b border-r border-gray-100 dark:border-gray-800 whitespace-nowrap text-gray-900 dark:text-foreground text-right ${child.isGroup ? "cursor-not-allowed" : "cursor-text"}`}
           onClick={() =>
             !isEditing(child.id, "amount") &&
             startEditing(child.id, "amount", child.amount, child.isGroup)
@@ -257,15 +257,13 @@ const ChildRow = ({
               className={`${editInputClass} text-right`}
             />
           ) : (
-            <span className="cursor-text block py-px">
-              {formatAmount(child.amount)}
-            </span>
+            <span className="block py-px">{formatAmount(child.amount)}</span>
           )}
         </td>
 
         {/* Status */}
         <td
-          className={tdClass}
+          className={`${tdClass} ${child.isGroup ? "cursor-not-allowed" : "cursor-pointer"}`}
           onClick={() =>
             !isEditing(child.id, "status") &&
             startEditing(child.id, "status", child.status, child.isGroup)
@@ -289,15 +287,13 @@ const ChildRow = ({
               ))}
             </select>
           ) : (
-            <span className="cursor-pointer">
-              <StatusBadge status={child.status} />
-            </span>
+            <StatusBadge status={child.status} />
           )}
         </td>
 
         {/* Source */}
         <td
-          className={`${tdClass}`}
+          className={`${tdClass} ${child.isGroup ? "cursor-not-allowed" : "cursor-text"}`}
           onClick={() =>
             !isEditing(child.id, "source") &&
             startEditing(child.id, "source", child.source ?? "", child.isGroup)
@@ -315,9 +311,7 @@ const ChildRow = ({
               className={editInputClass}
             />
           ) : (
-            <span className="cursor-text block py-px">
-              {child.source ?? ""}
-            </span>
+            <span className="block py-px">{child.source ?? ""}</span>
           )}
         </td>
 
@@ -365,6 +359,7 @@ const ChildRow = ({
             child={gc}
             allTransactions={allTransactions}
             siblings={grandchildren}
+            depth={depth + 1}
             isSelected={selectedIds.has(gc.id)}
             isExpanded={expandedIds.has(gc.id)}
             selectedIds={selectedIds}
