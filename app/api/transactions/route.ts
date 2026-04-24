@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { transactions } from "@/lib/db/schema";
-import { eq, desc, asc, and, isNull, ilike, or, count, sum, inArray, gte, lte, SQL } from "drizzle-orm";
+import { eq, desc, asc, and, isNull, ilike, or, count, sum, inArray, gte, lte, SQL, sql } from "drizzle-orm";
 import { STATUSES, UPDATABLE_FIELDS } from "@/types/transaction";
 
 const SORTABLE_COLUMNS = {
@@ -74,6 +74,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit;
   const sortBy = url.searchParams.get("sortBy");
   const sortDir = url.searchParams.get("sortDir");
+  const sortAbs = url.searchParams.get("sortAbs") === "true";
   const filterDescription = url.searchParams.get("filterDescription")?.trim() ?? "";
   const filterDateFrom = url.searchParams.get("filterDateFrom")?.trim() ?? "";
   const filterDateTo = url.searchParams.get("filterDateTo")?.trim() ?? "";
@@ -120,8 +121,13 @@ export async function GET(request: Request) {
 
   let orderByClause;
   if (isSortable(sortBy) && (sortDir === "asc" || sortDir === "desc")) {
-    const col = SORTABLE_COLUMNS[sortBy];
-    orderByClause = sortDir === "asc" ? asc(col) : desc(col);
+    if (sortBy === "amount" && sortAbs) {
+      const absCol = sql`ABS(${transactions.amount})`;
+      orderByClause = sortDir === "asc" ? asc(absCol) : desc(absCol);
+    } else {
+      const col = SORTABLE_COLUMNS[sortBy];
+      orderByClause = sortDir === "asc" ? asc(col) : desc(col);
+    }
   } else {
     orderByClause = desc(transactions.createdAt);
   }

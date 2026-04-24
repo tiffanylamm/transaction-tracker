@@ -93,7 +93,7 @@ All state lives in `app/page.tsx`. The page fetches data from the API on mount a
 
 - `app/page.tsx` — owns all client state; handles pagination (50/page), search, sorting, CRUD, CSV import, and group expansion. Uses `authClient.useSession()` for session data.
 - `app/sign-in/page.tsx` — email/password sign-in and sign-up; Google OAuth wired but UI toggle commented out
-- `components/TransactionTable.tsx` — renders the table with inline cell editing (click to edit, Enter/blur to commit, Escape to cancel); expandable group rows; "add row" form; checkbox selection
+- `components/TransactionTable/` — renders the table with inline cell editing (click to edit, Enter/blur to commit, Escape to cancel); expandable group rows; "add row" form; checkbox selection
 - `components/BulkActions.tsx` — dropdown for selected rows: bulk update (category, status, source) or bulk delete
 - `components/CSVImportModal.tsx` — two-step modal (file upload → column mapping); auto-detects headers using signal words; presets in `lib/csvPresets.ts` for Capital One, Bank of America, Chase, PayPal
 - `components/Pagination.tsx` — page navigation with manual page input
@@ -122,3 +122,18 @@ Tailwind v4 with `@import "tailwindcss"` in `globals.css`. No custom theme exten
 ### Drizzle Migrations
 
 Migrations are defined by schema in `lib/db/schema.ts` and output to `lib/db/migrations/`. Run `npx drizzle-kit generate` then `npx drizzle-kit migrate` after schema changes. Config is in `drizzle.config.ts`.
+
+## Pull Request Descriptions
+
+When asked to write a PR description, output it as a raw GitHub Markdown code block (fenced with ` ```markdown `) so it can be copied directly. Use only `##` for section headers (no `#` or `###`). Follow this structure:
+
+```
+## Summary
+<bullet points of what changed and why>
+
+## Changes
+<bullet points of specific implementation changes>
+
+## Notes
+<any caveats, follow-ups, or context reviewers should know — omit section if none>
+```
